@@ -1,0 +1,21 @@
+{
+  "name": "playwright-framework-poc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/aws-sdk": "^0.0.42",
+    "@types/node": "^24.10.1",
+    "aws-cdk-lib": "^2.227.0",
+    "constructs": "^10.4.3"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^17.2.3"
+  }
+}
