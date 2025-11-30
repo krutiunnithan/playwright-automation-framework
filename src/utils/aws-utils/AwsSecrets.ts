@@ -120,3 +120,20 @@ export async function getUserCreds(env: string, userProfile: string) {
 
 //   return allProfiles[env][foundProfile]; // { username, password }
 // }
+
+AWS.config.update({ region: 'ap-southeast-2' });
+
+export async function getGmailSecrets(secretName: string) {
+  const client = new AWS.SecretsManager();
+
+  try {
+    console.log("1");
+    const data = await client.getSecretValue({ SecretId: secretName }).promise();
+    console.log(data);
+    if (!data.SecretString) throw new Error('SecretString is empty');
+    return JSON.parse(data.SecretString);
+  } catch (err) {
+    console.error(`Failed to fetch secret ${secretName}:`, err);
+    throw err;
+  }
+}

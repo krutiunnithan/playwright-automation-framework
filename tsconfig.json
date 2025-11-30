@@ -6,7 +6,7 @@
       "@pages/*": ["pages/*"],
       "@utils/*": ["utils/*"],
       "@validations/*": ["validations/*"],
-
+      "@helpers/*": ["helpers/*"],
     },
     "strict": true,
     "esModuleInterop": true,
