@@ -2,9 +2,10 @@ import { test, expect } from '@fixtures/pom-fixtures';
 import { LoginValidations } from "@validations/LoginValidations";
 
 
-test('Login as Case Manager', {tag: '@Smoke',}, async ({ loginPage}) => {
+test('Login as Case Manager', {tag: '@Smoke',}, async ({loginPage}) => {
   await loginPage.login('case manager');
-
+  
+  // await loginPage.waitForTimeout();
   // add assertion
   await LoginValidations.validateDashboard();
 });

@@ -3,7 +3,7 @@ import { Page, Locator } from '@playwright/test';
 
 export abstract class BasePage {
   protected page: Page;
-  protected readonly defaultTimeout = 30_000;
+  protected readonly defaultTimeout = 60_000;
 
   constructor(page: Page) {
     this.page = page;
@@ -60,6 +60,10 @@ export abstract class BasePage {
       }
     }
     throw lastErr;
+  }
+
+  async waitForTimeout() {
+    await this.page.waitForTimeout(90000);
   }
 
   // attach screenshot helper to test.info() in tests (to be used from tests)

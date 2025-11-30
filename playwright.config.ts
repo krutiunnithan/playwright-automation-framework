@@ -63,16 +63,16 @@ export default defineConfig({
        },
     },
 
-    // {
-    //   name: 'firefox',
-    //   testMatch: [
-    //     'ui-tests/**/*.spec.ts',       
-    //     'ui-api-tests/**/*.spec.ts'    
-    //   ],
-    //   use: { ...devices['Desktop Firefox'], 
-    //     baseURL, 
-    //    },
-    // },
+    {
+      name: 'firefox',
+      testMatch: [
+        'ui-tests/**/*.spec.ts',       
+        'ui-api-tests/**/*.spec.ts'    
+      ],
+      use: { ...devices['Desktop Firefox'], 
+        baseURL, 
+       },
+    },
 
     // {
     //   name: 'webkit',
