@@ -1,14 +1,49 @@
-import { test, expect } from '@fixtures/pom-fixtures';
+import { test } from '@fixtures/pom-fixtures';
 import { LoginValidations } from "@validations/LoginValidations";
+import { UserProfiles } from "@data/enums/user-profiles.enums";
+import { TestTags } from "@data/enums/test-tags.enums";
 
+// ------------------------------------------------------
+// Test 1: Verify successful login as Case Manager
+// ------------------------------------------------------
+test('Login as Case Manager and verify successful login', { tag: TestTags.SMOKE }, async ({ loginPage }) => {
 
-test('Login as Case Manager', {tag: '@Smoke',}, async ({loginPage}) => {
-  await loginPage.login('case manager');
-  
-  // await loginPage.waitForTimeout();
-  // add assertion
+  // Step 1: Login using Case Manager credentials
+  await loginPage.login(UserProfiles.CASE_MANAGER);
+
+  // Step 2: Validate dashboard is displayed
   await LoginValidations.validateDashboard();
 });
 
 
-// add mutiple profile login and logout with assertion 
+// ------------------------------------------------------
+// Test 2: Login → Logout → Login as another user
+// ------------------------------------------------------
+test('Login as Case Manager and Re-login as System Admin', { tag: TestTags.REGRESSION }, async ({ loginPage }) => {
+
+  // Step 1: Login as Case Manager
+  await loginPage.login(UserProfiles.CASE_MANAGER);
+
+  // Step 2: Logout
+  await loginPage.logout();
+
+  // Step 3: Login as System Admin
+  await loginPage.login(UserProfiles.SYSTEM_ADMIN);
+
+  // Step 4: Validate dashboard is displayed
+  await LoginValidations.validateDashboard();
+});
+
+
+// ------------------------------------------------------
+// Test 3: Validate unsuccessful login for invalid profile
+// ------------------------------------------------------
+test('Login as Accommodations Manager and verify unsuccessful login failure', { tag: TestTags.SMOKE }, async ({ loginPage }) => {
+
+  // Step 1: Login using invalid (not permitted) profile
+  await loginPage.login(UserProfiles.ACCOMMODATIONS_MANAGER);
+
+  // Step 2: Validate login failure message
+  await LoginValidations.validateLoginFailure();
+});
+

@@ -1,9 +1,29 @@
+/**
+ * ============================================================================
+ * AWS Secrets Utility
+ * ----------------------------------------------------------------------------
+ * Provides helper functions for:
+ * - Assuming an AWS role with STS
+ * - Fetching environment-specific user credentials
+ * - Retrieving Gmail/other secrets from AWS Secrets Manager
+ *
+ * Implements caching of STS temporary credentials for efficiency.
+ * ============================================================================
+ */
 import AWS from 'aws-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const STS_DURATION = 12 * 60 * 60; // 12 hours
+/** Duration for STS temporary credentials (12 hours) */
+const STS_DURATION = 12 * 60 * 60;
 
+/**
+ * ============================================================================
+ * CachedCredentials
+ * ----------------------------------------------------------------------------
+ * Interface for storing temporary STS credentials in memory
+ * ============================================================================
+ */
 interface CachedCredentials {
   accessKeyId: string;
   secretAccessKey: string;
@@ -11,19 +31,29 @@ interface CachedCredentials {
   expiration: Date;
 }
 
-// In-memory cache
+// In-memory cache for temporary credentials
 let cachedCreds: CachedCredentials | null = null;
 
-// STS client to assume role
+// STS client for assuming roles
 const sts = new AWS.STS({ region: process.env.AWS_REGION });
 
-// Cache-aware role assumption
+
+/**
+ * ============================================================================
+ * assumeRole
+ * ----------------------------------------------------------------------------
+ * Assumes an AWS role using STS and caches the temporary credentials in memory.
+ *
+ * @param {string} roleArn - ARN of the AWS role to assume
+ * @returns {Promise<AWS.SecretsManager>} AWS SecretsManager client initialized with temporary credentials
+ * ============================================================================
+ */
 async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
   const now = new Date();
 
   if (!cachedCreds || now >= cachedCreds.expiration) {
 
-    // fetch new temporary credentials
+    // Refresh credentials if expired or not present
     const res = await sts
       .assumeRole({
         RoleArn: roleArn,
@@ -31,7 +61,7 @@ async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
         DurationSeconds: STS_DURATION,
       })
       .promise();
-    
+
     if (!res.Credentials) throw new Error('Failed to assume role');
 
     cachedCreds = {
@@ -42,7 +72,7 @@ async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
     };
   }
 
-  // return a SecretsManager client with cached creds
+  // Return a SecretsManager client with cached credentials
   return new AWS.SecretsManager({
     region: process.env.AWS_REGION,
     accessKeyId: cachedCreds.accessKeyId,
@@ -52,8 +82,15 @@ async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
 }
 
 /**
- * Fetch credentials for a given environment and profile.
- * Uses cached STS creds.
+ * ============================================================================
+ * getUserCreds
+ * ----------------------------------------------------------------------------
+ * Fetches user credentials for a given environment and profile from AWS Secrets Manager.
+ *
+ * @param {string} env - Target environment (e.g., 'dev', 'qa', 'prod')
+ * @param {string} userProfile - Profile name (e.g., 'case manager')
+ * @returns {Promise<{username: string, password: string}>} Environment-specific user credentials
+ * ============================================================================
  */
 export async function getUserCreds(env: string, userProfile: string) {
   const roleArn = process.env.AWS_SECRETS_ROLE_ARN!;
@@ -73,6 +110,30 @@ export async function getUserCreds(env: string, userProfile: string) {
   return allProfiles[env][key];
 }
 
+AWS.config.update({ region: process.env.AWS_REGION });
+
+/**
+ * ============================================================================
+ * getGmailSecrets
+ * ----------------------------------------------------------------------------
+ * Retrieves Gmail (or other) secrets from AWS Secrets Manager.
+ *
+ * @param {string} secretName - Name of the secret in AWS Secrets Manager
+ * @returns {Promise<any>} Parsed JSON object of the secret
+ * ============================================================================
+ */
+export async function getGmailSecrets(secretName: string) {
+  const client = new AWS.SecretsManager();
+
+  try {
+    const data = await client.getSecretValue({ SecretId: secretName }).promise();
+    if (!data.SecretString) throw new Error('SecretString is empty');
+    return JSON.parse(data.SecretString);
+  } catch (err) {
+    console.error(`Failed to fetch secret ${secretName}:`, err);
+    throw err;
+  }
+}
 
 
 // Code for SSO login on local and IAM Role via OIDC on pipeline - No STS calls
@@ -120,20 +181,3 @@ export async function getUserCreds(env: string, userProfile: string) {
 
 //   return allProfiles[env][foundProfile]; // { username, password }
 // }
-
-AWS.config.update({ region: 'ap-southeast-2' });
-
-export async function getGmailSecrets(secretName: string) {
-  const client = new AWS.SecretsManager();
-
-  try {
-    console.log("1");
-    const data = await client.getSecretValue({ SecretId: secretName }).promise();
-    console.log(data);
-    if (!data.SecretString) throw new Error('SecretString is empty');
-    return JSON.parse(data.SecretString);
-  } catch (err) {
-    console.error(`Failed to fetch secret ${secretName}:`, err);
-    throw err;
-  }
-}
