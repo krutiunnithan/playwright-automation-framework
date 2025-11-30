@@ -2,11 +2,24 @@
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "@fixtures/*": ["fixtures/*"],
-      "@pages/*": ["pages/*"],
-      "@utils/*": ["utils/*"],
-      "@validations/*": ["validations/*"],
-      "@helpers/*": ["helpers/*"],
+      "@fixtures/*": [
+        "fixtures/*"
+      ],
+      "@pages/*": [
+        "pages/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@validations/*": [
+        "validations/*"
+      ],
+      "@helpers/*": [
+        "helpers/*"
+      ],
+      "@data/*": [
+        "data/*"
+      ],
     },
     "strict": true,
     "esModuleInterop": true,
@@ -14,7 +27,12 @@
     "resolveJsonModule": true,
     "target": "ESNext",
     "module": "CommonJS",
-    "types": ["node", "playwright"]
+    "types": [
+      "node",
+      "playwright"
+    ]
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }
