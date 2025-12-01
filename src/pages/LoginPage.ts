@@ -78,7 +78,9 @@ export class LoginPage extends BasePage {
 
 
     // Step 2: Handle OTP if input is visible
-    if (await this.otpTextBox.isVisible()) {
+    const otpBool = await this.otpTextBox.isVisible();
+    console.log(" ---------------------------------- LoginPage.ts - otpBool value is: " + otpBool);
+    if (otpBool) {
       const secrets = await getGmailSecrets('playwright/gmail-otp-creds');
 
 
@@ -92,7 +94,6 @@ export class LoginPage extends BasePage {
       // Step 4: Fill OTP and submit
       await this.fill(this.otpTextBox, otp);
       await this.click(this.verifyButton);
-
     }
 
   }
