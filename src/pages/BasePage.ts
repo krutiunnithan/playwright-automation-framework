@@ -119,6 +119,30 @@ export abstract class BasePage {
     return el.isVisible();
   }
 
+  
+/**
+ * Select a value from a Salesforce Lightning picklist
+ * @param picklistLabel Label of the picklist (e.g., "Status")
+ * @param value Value to select (e.g., "abc", "xyz")
+ */
+async selectPicklistValue(picklistLabel: string, value: string) {
+  // Find the combobox button next to the label
+  const picklistButton = this.page.locator(`xpath=//button[@aria-label="${picklistLabel}"] | //input[@aria-label="${picklistLabel}"]`);
+  await picklistButton.waitFor({ state: 'visible', timeout: 10000 });
+  await picklistButton.click();
+
+  // Wait for the dropdown options to appear
+  const dropdownOption = this.page.locator(`xpath=//span[@title='${value}']`);
+  await dropdownOption.waitFor({ state: 'visible', timeout: 10000 });
+
+  // Click the desired option
+  await dropdownOption.click();
+
+  // Optional: wait for dropdown to disappear (stability)
+  await this.page.waitForTimeout(500);
+}
+
+
   /**
    * ==========================================================================
    * attempt
