@@ -1,0 +1,42 @@
+{
+  "type": {
+    "potentialValue": ["Mechanical", "Electrical", "Other", "Electronic", "Structural"]
+  },
+  "priority": {
+    "potentialValue": ["Low", "Medium", "High"]
+  },
+  "status": {
+    "potentialValue": ["New", "Working", "Escalated"]
+  },
+  "caseorigin": {
+    "potentialValue": ["Web", "Email", "Phone"]
+  },
+  "casereason": {
+    "potentialValue": ["Installation", "Performance", "Other", "Breakdown", "Feedback"]
+  },
+  "subject": {
+    "potentialValue": ["Login Issue", "Data Request", "Billing Query"]
+  },
+  "description": {
+    "constrainedPotentialValue": {
+      "Login Issue": [
+        "User cannot login to portal",
+        "Password reset not working",
+        "Multi-factor authentication failure"
+      ],
+      "Data Request": [
+        "Requesting account data",
+        "Requesting transaction history",
+        "Customer wants usage statistics"
+      ],
+      "Billing Query": [
+        "Issue with billing statement",
+        "Incorrect charge on account",
+        "Refund requested for duplicate payment"
+      ]
+    }
+  },
+  "internalcomments": {
+    "potentialValue": ["Test comment"]
+  }
+}

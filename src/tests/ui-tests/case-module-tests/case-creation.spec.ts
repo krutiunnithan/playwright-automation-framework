@@ -1,18 +1,18 @@
 import { test, expect } from '@fixtures/pom-fixtures';
-import { ContactValidations } from "@validations/ContactValidations";
+import { CaseValidations } from "@validations/CaseValidations";
 import { UserProfiles } from "@data/enums/user-profiles.enums";
 import { TestTags } from "@data/enums/test-tags.enums";
 
-test('Verify contact creation as a case manager', { tag: TestTags.SMOKE }, async ({loginPage, contactPage}) => {
+test('Verify case creation as a case manager', { tag: TestTags.SMOKE }, async ({loginPage, casePage}) => {
   
   test.setTimeout(60000 * 2);
 
   await loginPage.login(UserProfiles.CASE_MANAGER);
 
   // should have optional args 
-  await contactPage.createContact();
+  await casePage.createCase();
 
   // Generalize below toast msg logic 
-  await ContactValidations.validateContactCreation();
+  await CaseValidations.validateCaseCreation();
 });
 

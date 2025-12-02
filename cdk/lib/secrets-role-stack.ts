@@ -1,4 +1,3 @@
-import * as cdk from 'aws-cdk-lib';
 import { Stack, StackProps } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -11,7 +10,7 @@ export class SecretsRoleStack extends Stack {
 
     // Create role
     this.role = new iam.Role(this, 'PlaywrightLocalRole', {
-      assumedBy: new iam.AccountRootPrincipal(), // for local user assume, can change to specific IAM user
+      assumedBy: new iam.AccountRootPrincipal(), 
       roleName: 'PlaywrightLocalRole'
     });
 
@@ -21,7 +20,7 @@ export class SecretsRoleStack extends Stack {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret"
       ],
-      resources: ["*"], // or restrict to specific secret ARN
+      resources: ["*"], 
     }));
   }
 }
