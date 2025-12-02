@@ -43,6 +43,8 @@ export class LoginPage extends BasePage {
   /**
    * ==========================================================================
    * Constructor
+   * Initializes Salesforce Login Page locators.
+   * 
    * @param {Page} page - Playwright page instance
    * ==========================================================================
    */

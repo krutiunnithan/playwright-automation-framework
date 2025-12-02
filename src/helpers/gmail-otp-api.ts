@@ -50,6 +50,7 @@ export async function fetchSalesforceOTPFromGmail(
   // Step 1: Poll Gmail until OTP is found or timeout is reached
   // ---------------------------------------------------------------------------
   while (Date.now() - start < timeoutMs) {
+    await pause(10000);
 
     // STEP 1a: List Gmail threads matching search query
     const threadsRes = await gmail.users.threads.list({

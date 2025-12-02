@@ -1,7 +1,37 @@
+/**
+ * ============================================================================
+ * ContactPage
+ * ----------------------------------------------------------------------------
+ * Page Object Model for Salesforce Contact page.
+ * Handles navigation, launching new contact creation, and exposing all
+ * UI element locators required to create a Contact record.
+ *
+ * Integrates with ContactCreation actions for data-driven automation.
+ * Extends BasePage to leverage shared Playwright utilities.
+ * ============================================================================
+ */
+import { ContactCreation } from "@actions/contact-actions/ContactCreation";
 import { BasePage } from '@pages/BasePage';
 import { Locator, Page } from '@playwright/test';
-import { ContactCreation } from "@actions/contact-actions/ContactCreation";
 
+
+/**
+ * ============================================================================
+ * ContactPage
+ * ----------------------------------------------------------------------------
+ * @property {Locator} contactsLink             - Sidebar navigation link for Contacts
+ * @property {Locator} newContactButton         - Button to open the New Contact modal/form
+ * @property {Locator} firstNameTextBox         - First Name input field
+ * @property {Locator} lastNameTextBox          - Last Name input field
+ * @property {Locator} phoneTextBox             - Phone number input field
+ * @property {Locator} emailTextBox             - Email input field
+ * @property {Locator} mailingCountryComboBox   - Mailing Country picklist
+ * @property {Locator} mailingCityTextBox       - Mailing City text input
+ * @property {Locator} mailingStateComboBox     - Mailing State/Province picklist
+ * @property {Locator} mailingZipTextBox        - Mailing Zip/Postal Code input
+ * @property {Locator} saveButton               - Save button to submit the Contact form
+ * ============================================================================
+ */
 export class ContactPage extends BasePage {
   readonly contactsLink: Locator;
   readonly newContactButton: Locator;
@@ -17,6 +47,14 @@ export class ContactPage extends BasePage {
 
 
 
+  /**
+   * ==========================================================================
+   * Constructor
+   * Initializes Salesforce Contact Page locators.
+   *
+   * @param {Page} page - Playwright page instance
+   * ==========================================================================
+   */
   constructor(page: Page) {
     super(page);
     this.contactsLink = this.page.getByRole('link', { name: 'Contacts' });
@@ -33,6 +71,17 @@ export class ContactPage extends BasePage {
   }
 
 
+  /**
+  * ==========================================================================
+  * createContact
+  * Creates a Salesforce Contact record using ContactCreation actions.
+  *
+  * @param {object} [data] - Optional Contact data matching ContactCreation inputs
+  *
+  * @example
+  *   await contactPage.createContact({ firstName: "John", lastName: "Doe" });
+  * ==========================================================================
+  */
   async createContact(data?: Parameters<typeof ContactCreation.contactCreation>[0]) {
     await ContactCreation.contactCreation(data);
   }
