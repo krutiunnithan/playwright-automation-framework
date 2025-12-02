@@ -1,21 +1,49 @@
 {
   "type": {
-    "potentialValue": ["Mechanical", "Electrical", "Other", "Electronic", "Structural"]
+    "potentialValue": [
+      "Mechanical",
+      "Electrical",
+      "Other",
+      "Electronic",
+      "Structural"
+    ]
   },
   "priority": {
-    "potentialValue": ["Low", "Medium", "High"]
+    "potentialValue": [
+      "Low",
+      "Medium",
+      "High"
+    ]
   },
   "status": {
-    "potentialValue": ["New", "Working", "Escalated"]
+    "potentialValue": [
+      "New",
+      "Working",
+      "Escalated"
+    ]
   },
-  "caseorigin": {
-    "potentialValue": ["Web", "Email", "Phone"]
+  "caseOrigin": {
+    "potentialValue": [
+      "Web",
+      "Email",
+      "Phone"
+    ]
   },
-  "casereason": {
-    "potentialValue": ["Installation", "Performance", "Other", "Breakdown", "Feedback"]
+  "caseReason": {
+    "potentialValue": [
+      "Installation",
+      "Performance",
+      "Other",
+      "Breakdown",
+      "Feedback"
+    ]
   },
   "subject": {
-    "potentialValue": ["Login Issue", "Data Request", "Billing Query"]
+    "potentialValue": [
+      "Login Issue",
+      "Data Request",
+      "Billing Query"
+    ]
   },
   "description": {
     "constrainedPotentialValue": {
@@ -36,7 +64,9 @@
       ]
     }
   },
-  "internalcomments": {
-    "potentialValue": ["Test comment"]
+  "internalComments": {
+    "potentialValue": [
+      "Test comment"
+    ]
   }
 }

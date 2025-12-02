@@ -7,18 +7,18 @@ export interface CaseData {
   description?: string;
   status?: string;
   priority?: string;
-  caseorigin?: string;
+  caseOrigin?: string;
   type?: string;
-  casereason?: string;
+  caseReason?: string;
   product?: string;
-  internalcomments?: string;
+  internalComments?: string;
 }
 
 /**
  * Contact actions to create a contact in Salesforce.
  * Optional data can be passed, otherwise TestDataFactory is used.
  */
-export class CaseActions {
+export class CaseCreation {
 
   static async caseCreation(
     data?: CaseData,
@@ -43,14 +43,14 @@ export class CaseActions {
 
     await casePage.selectPicklistValue("Status", data.status!);
     await casePage.selectPicklistValue("Priority", data.priority!);
-    await casePage.selectPicklistValue("Case Origin", data.caseorigin!);
+    await casePage.selectPicklistValue("Case Origin", data.caseOrigin!);
     await casePage.selectPicklistValue("Type", data.type!);
-    await casePage.selectPicklistValue("Case Reason", data.casereason!);
+    await casePage.selectPicklistValue("Case Reason", data.caseReason!);
     // await casePage.selectPicklistValue("Product", data.product!);
 
     await casePage.fill(casePage.subjectTextBox, data.subject!);
     await casePage.fill(casePage.descriptionTextBox, data.description!);
-    await casePage.fill(casePage.internalCommentsTextBox, data.internalcomments!);
+    await casePage.fill(casePage.internalCommentsTextBox, data.internalComments!);
 
     await casePage.click(casePage.saveButton);
   }

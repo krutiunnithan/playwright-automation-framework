@@ -7,7 +7,7 @@
  * to simplify actions, add default timeouts, retry logic, and screenshots.
  * ============================================================================
  */
-import { Page, Locator } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 
 
 /**
@@ -119,28 +119,28 @@ export abstract class BasePage {
     return el.isVisible();
   }
 
-  
-/**
- * Select a value from a Salesforce Lightning picklist
- * @param picklistLabel Label of the picklist (e.g., "Status")
- * @param value Value to select (e.g., "abc", "xyz")
- */
-async selectPicklistValue(picklistLabel: string, value: string) {
-  // Find the combobox button next to the label
-  const picklistButton = this.page.locator(`xpath=//button[@aria-label="${picklistLabel}"] | //input[@aria-label="${picklistLabel}"]`);
-  await picklistButton.waitFor({ state: 'visible', timeout: this.defaultTimeout });
-  await picklistButton.click();
 
-  // Wait for the dropdown options to appear
-  const dropdownOption = this.page.locator(`xpath=//span[@title='${value}']`).first();
-  await dropdownOption.waitFor({ state: 'attached', timeout: this.defaultTimeout });
+  /**
+   * Select a value from a Salesforce Lightning picklist
+   * @param picklistLabel Label of the picklist (e.g., "Status")
+   * @param value Value to select (e.g., "abc", "xyz")
+   */
+  async selectPicklistValue(picklistLabel: string, value: string) {
+    // Find the combobox button next to the label
+    const picklistButton = this.page.locator(`xpath=//button[@aria-label="${picklistLabel}"] | //input[@aria-label="${picklistLabel}"]`);
+    await picklistButton.waitFor({ state: 'visible', timeout: this.defaultTimeout });
+    await picklistButton.click();
 
-  // Click the desired option
-  await dropdownOption.click({force : true});
+    // Wait for the dropdown options to appear
+    const dropdownOption = this.page.locator(`xpath=//span[@title='${value}']`).first();
+    await dropdownOption.waitFor({ state: 'attached', timeout: this.defaultTimeout });
 
-  // Optional: wait for dropdown to disappear (stability)
-  await this.page.waitForTimeout(500);
-}
+    // Click the desired option
+    await dropdownOption.click({ force: true });
+
+    // Optional: wait for dropdown to disappear (stability)
+    await this.page.waitForTimeout(500);
+  }
 
 
   /**
@@ -165,15 +165,6 @@ async selectPicklistValue(picklistLabel: string, value: string) {
     throw lastErr;
   }
 
-  /**
-   * ==========================================================================
-   * waitForTimeout
-   * Hard wait (90 seconds) for debugging or long-polling scenarios
-   * ==========================================================================
-   */
-  async waitForTimeout() {
-    await this.page.waitForTimeout(90000);
-  }
 
   /**
    * ==========================================================================

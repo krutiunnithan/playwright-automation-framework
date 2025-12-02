@@ -1,25 +1,122 @@
 {
-  "salutation": { "potentialValue": ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof."] },
-  "firstName": { "potentialValue": ["John", "Jane", "Alex", "Emily", "Chris", "Calvin", "Hobbes", "Oswald", "Pooh", "Winie", "Robert", "Jules", "Chritie", "Robin"] },
-  "lastName": { "potentialValue": ["Smith", "Doe", "Brown", "Johnson", "Charles", "Watson", "Dave", "Rode"] },
-  "phone": { "potentialValue": ["0412345678", "0498765432", "0432123456", "0432103456", "0432113456", "0432133456", "0432143456", "0432155456"] },
-  "email": { "potentialValue": ["example1@test.com", "example2@test.com", "example3@test.com", "example4@test.com", "example5@test.com", "example6@test.com", "example7@test.com"] },
-  "country": { "potentialValue": ["Australia", "United States"] },
+  "salutation": {
+    "potentialValue": [
+      "Mr.",
+      "Mrs.",
+      "Ms.",
+      "Dr.",
+      "Prof."
+    ]
+  },
+  "firstName": {
+    "potentialValue": [
+      "John",
+      "Jane",
+      "Alex",
+      "Emily",
+      "Chris",
+      "Calvin",
+      "Hobbes",
+      "Oswald",
+      "Pooh",
+      "Winie",
+      "Robert",
+      "Jules",
+      "Chritie",
+      "Robin"
+    ]
+  },
+  "lastName": {
+    "potentialValue": [
+      "Smith",
+      "Doe",
+      "Brown",
+      "Johnson",
+      "Charles",
+      "Watson",
+      "Dave",
+      "Rode"
+    ]
+  },
+  "phone": {
+    "potentialValue": [
+      "0412345678",
+      "0498765432",
+      "0432123456",
+      "0432103456",
+      "0432113456",
+      "0432133456",
+      "0432143456",
+      "0432155456"
+    ]
+  },
+  "email": {
+    "potentialValue": [
+      "example1@test.com",
+      "example2@test.com",
+      "example3@test.com",
+      "example4@test.com",
+      "example5@test.com",
+      "example6@test.com",
+      "example7@test.com"
+    ]
+  },
+  "country": {
+    "potentialValue": [
+      "Australia",
+      "United States"
+    ]
+  },
   "state": {
     "constrainedPotentialValue": {
-      "Australia": ["Western Australia", "New South Wales", "Victoria"],
-      "United States": ["California", "Texas", "New York"]
+      "Australia": [
+        "Western Australia",
+        "New South Wales",
+        "Victoria"
+      ],
+      "United States": [
+        "California",
+        "Texas",
+        "New York"
+      ]
     }
   },
   "city": {
     "constrainedPotentialValue": {
-      "Western Australia": ["Perth", "Fremantle"],
-      "New South Wales": ["Sydney", "Newcastle"],
-      "Victoria": ["Melbourne", "Geelong"],
-      "California": ["Los Angeles", "San Francisco"],
-      "Texas": ["Dallas", "Austin"],
-      "New York": ["New York City", "Buffalo"]
+      "Western Australia": [
+        "Perth",
+        "Fremantle"
+      ],
+      "New South Wales": [
+        "Sydney",
+        "Newcastle"
+      ],
+      "Victoria": [
+        "Melbourne",
+        "Geelong"
+      ],
+      "California": [
+        "Los Angeles",
+        "San Francisco"
+      ],
+      "Texas": [
+        "Dallas",
+        "Austin"
+      ],
+      "New York": [
+        "New York City",
+        "Buffalo"
+      ]
     }
   },
-  "zip": { "potentialValue": ["6000", "2000", "3000", "90001", "73301", "10001"] }
+  "zip": {
+    "potentialValue": [
+      "6000",
+      "2000",
+      "3000",
+      "90001",
+      "73301",
+      "10001"
+    ]
+  }
 }

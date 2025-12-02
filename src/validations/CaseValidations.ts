@@ -22,10 +22,10 @@ export class CaseValidations {
    * @throws {Error} If the toast message does not match expected message
    * ==========================================================================
    */
-//   static async validateContactCreation(firstName: string, lastName: string) {
-//     const regex = new RegExp(`Contact .* was created`, "i");
-//     await GenericValidations.validateToastMessage(regex);
-//   }
+  //   static async validateContactCreation(firstName: string, lastName: string) {
+  //     const regex = new RegExp(`Contact .* was created`, "i");
+  //     await GenericValidations.validateToastMessage(regex);
+  //   }
   static async validateCaseCreation() {
     const regex = new RegExp(`Case .* was created`, "i");
     await GenericValidations.validateToastMessage(regex);

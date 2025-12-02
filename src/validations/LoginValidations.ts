@@ -9,9 +9,9 @@
  * - Provides reusable assertions for test cases.
  * ============================================================================
  */
-import { expect, Locator } from '@playwright/test';
-import { PageProvider } from '@utils/ui-utils/PageProvider';
 import { LoginPage } from "@pages/LoginPage";
+import { expect } from '@playwright/test';
+import { PageProvider } from '@utils/ui-utils/PageProvider';
 
 export class LoginValidations {
 

@@ -7,10 +7,10 @@
  * Extends BasePage to leverage common Playwright actions and utilities.
  * ============================================================================
  */
-import { Locator, Page, expect } from '@playwright/test';
-import { BasePage } from '@pages/BasePage';
-import { getGmailSecrets, getUserCreds } from '@utils/aws-utils/AwsSecrets';
 import { fetchSalesforceOTPFromGmail } from '@helpers/gmail-otp-api';
+import { BasePage } from '@pages/BasePage';
+import { Locator, Page } from '@playwright/test';
+import { getGmailSecrets, getUserCreds } from '@utils/aws-utils/AwsSecrets';
 
 
 /**
@@ -79,10 +79,9 @@ export class LoginPage extends BasePage {
 
     // Step 2: Handle OTP if input is visible
     const otpBool = await this.otpTextBox.isVisible();
-    console.log(" ---------------------------------- LoginPage.ts - otpBool value is: " + otpBool);
+
     if (otpBool) {
       const secrets = await getGmailSecrets('playwright/gmail-otp-creds');
-
 
       // Step 3: Fetch OTP via Gmail API
       const otp = await fetchSalesforceOTPFromGmail(
@@ -120,6 +119,4 @@ export class LoginPage extends BasePage {
   async getLoginError(): Promise<string> {
     return this.loginErrorText.innerText();
   }
-
-
 }

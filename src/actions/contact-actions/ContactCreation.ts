@@ -1,6 +1,6 @@
-import { PageProvider } from '@utils/ui-utils/PageProvider';
 import { ContactPage } from '@pages/ContactPage';
-import { TestDataFactory, DataSource } from '@utils/data-utils/TestDataFactory';
+import { DataSource, TestDataFactory } from '@utils/data-utils/TestDataFactory';
+import { PageProvider } from '@utils/ui-utils/PageProvider';
 
 export interface ContactData {
   salutation?: string;
@@ -18,7 +18,7 @@ export interface ContactData {
  * Contact actions to create a contact in Salesforce.
  * Optional data can be passed, otherwise TestDataFactory is used.
  */
-export class ContactActions {
+export class ContactCreation {
 
   static async contactCreation(
     data?: ContactData,
@@ -34,7 +34,6 @@ export class ContactActions {
         throw new Error('Failed to fetch contact data from TestDataFactory');
       }
     }
-    console.log(data);
 
     const page = PageProvider.page;
     const contactPage = new ContactPage(page);

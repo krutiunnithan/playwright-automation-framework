@@ -10,12 +10,12 @@
  * This file acts as the dependency injection (DI) layer for all UI tests.
  * ============================================================================
  */
-import { test as base, expect, Page, TestInfo } from '@playwright/test';
-import { LoginPage } from '@pages/LoginPage';
-import { ContactPage } from '@pages/ContactPage';
 import { CasePage } from '@pages/CasePage';
-import path from 'path';
+import { ContactPage } from '@pages/ContactPage';
+import { LoginPage } from '@pages/LoginPage';
+import { test as base, expect } from '@playwright/test';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
+import path from 'path';
 
 
 /**
