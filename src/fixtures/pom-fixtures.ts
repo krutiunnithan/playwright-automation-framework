@@ -13,6 +13,7 @@
 import { test as base, expect, Page, TestInfo } from '@playwright/test';
 import { LoginPage } from '@pages/LoginPage';
 import { ContactPage } from '@pages/ContactPage';
+import { CasePage } from '@pages/CasePage';
 import path from 'path';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
 
@@ -26,6 +27,7 @@ import { PageProvider } from '@utils/ui-utils/PageProvider';
 type PomFixtures = {
   loginPage: LoginPage;
   contactPage: ContactPage;
+  casePage: CasePage;
 };
 
 
@@ -89,6 +91,21 @@ export const test = base.extend<PomFixtures>({
   contactPage: async ({ page }, use) => {
     const contactPage = new ContactPage(page);
     await use(contactPage);
+  },
+
+
+  /**
+   * ==========================================================================
+   * Case Page Fixture
+   * ==========================================================================
+   * Provides a ready-to-use CasePage instance.
+   *
+   * @param page - Playwright page instance
+   * @param use  - Exposes the fixture to test bodies
+   */
+  casePage: async ({ page }, use) => {
+    const casePage = new CasePage(page);
+    await use(casePage);
   },
 });
 

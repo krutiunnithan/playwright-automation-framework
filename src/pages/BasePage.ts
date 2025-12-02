@@ -128,15 +128,15 @@ export abstract class BasePage {
 async selectPicklistValue(picklistLabel: string, value: string) {
   // Find the combobox button next to the label
   const picklistButton = this.page.locator(`xpath=//button[@aria-label="${picklistLabel}"] | //input[@aria-label="${picklistLabel}"]`);
-  await picklistButton.waitFor({ state: 'visible', timeout: 10000 });
+  await picklistButton.waitFor({ state: 'visible', timeout: this.defaultTimeout });
   await picklistButton.click();
 
   // Wait for the dropdown options to appear
-  const dropdownOption = this.page.locator(`xpath=//span[@title='${value}']`);
-  await dropdownOption.waitFor({ state: 'visible', timeout: 10000 });
+  const dropdownOption = this.page.locator(`xpath=//span[@title='${value}']`).first();
+  await dropdownOption.waitFor({ state: 'attached', timeout: this.defaultTimeout });
 
   // Click the desired option
-  await dropdownOption.click();
+  await dropdownOption.click({force : true});
 
   // Optional: wait for dropdown to disappear (stability)
   await this.page.waitForTimeout(500);

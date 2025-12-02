@@ -1,0 +1,33 @@
+/**
+ * ============================================================================
+ * CaseValidations
+ * ----------------------------------------------------------------------------
+ * Centralized validation methods for the Case module.
+ * 
+ * Purpose:
+ * - Separates UI validation logic from Page Object Model (POM) logic.
+ * - Provides reusable assertions for test cases.
+ * ============================================================================
+ */
+import { GenericValidations } from '@validations/GenericValidations';
+
+export class CaseValidations {
+
+  /**
+   * ==========================================================================
+   * validateCaseCreation
+   * ----------------------------------------------------------------------------
+   * Validates that the casae creation toast message appears.
+   * @param expectedMessage - The message text you expect to see
+   * @throws {Error} If the toast message does not match expected message
+   * ==========================================================================
+   */
+//   static async validateContactCreation(firstName: string, lastName: string) {
+//     const regex = new RegExp(`Contact .* was created`, "i");
+//     await GenericValidations.validateToastMessage(regex);
+//   }
+  static async validateCaseCreation() {
+    const regex = new RegExp(`Case .* was created`, "i");
+    await GenericValidations.validateToastMessage(regex);
+  }
+}

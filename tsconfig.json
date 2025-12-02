@@ -20,6 +20,9 @@
       "@data/*": [
         "data/*"
       ],
+      "@actions/*": [
+        "actions/*"
+      ],
     },
     "strict": true,
     "esModuleInterop": true,
