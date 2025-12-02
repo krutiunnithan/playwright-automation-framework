@@ -2,6 +2,22 @@ import { ContactPage } from '@pages/ContactPage';
 import { DataSource, TestDataFactory } from '@utils/data-utils/TestDataFactory';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
 
+
+/**
+ * ============================================================================
+ * ContactData Interface
+ * ----------------------------------------------------------------------------
+ * Defines the structure of the data required to create a Contact record
+ * in Salesforce.
+ *
+ * All properties are optional because:
+ *   - Tests may override only specific values
+ *   - Missing fields can be auto-populated by TestDataFactory
+ *
+ * This allows flexibility while ensuring the Contact creation flow
+ * remains fully data-driven.
+ * ============================================================================
+ */
 export interface ContactData {
   salutation?: string;
   firstName?: string;
@@ -20,6 +36,25 @@ export interface ContactData {
  */
 export class ContactCreation {
 
+
+  /**
+  * ==========================================================================
+  * contactCreation
+  * --------------------------------------------------------------------------
+  * Creates a Contact record via Salesforce UI.
+  *
+  * @param data        Optional ContactData object to override test values
+  * @param dataSource  Optional DataSource ('synthetic', 'soql', etc.)
+  *
+  * Behavior:
+  *   - Defaults dataSource to 'synthetic' unless overridden
+  *   - If `data` is not provided, retrieves Contact data from TestDataFactory
+  *   - Executes all UI interactions using ContactPage POM methods
+  *
+  * Throws:
+  *   - Error if TestDataFactory fails to return contact data
+  * ==========================================================================
+  */
   static async contactCreation(
     data?: ContactData,
     dataSource?: DataSource  // <-- allow test to override

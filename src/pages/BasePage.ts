@@ -138,7 +138,7 @@ export abstract class BasePage {
     // Click the desired option
     await dropdownOption.click({ force: true });
 
-    // Optional: wait for dropdown to disappear (stability)
+    // Wait for dropdown to disappear (stability)
     await this.page.waitForTimeout(500);
   }
 
