@@ -1,8 +1,6 @@
-import { Locator, Page, expect } from '@playwright/test';
 import { BasePage } from '@pages/BasePage';
-import { getGmailSecrets, getUserCreds } from '@utils/aws-utils/AwsSecrets';
-import { fetchSalesforceOTPFromGmail } from '@helpers/gmail-otp-api';
-import { ContactActions } from "actions/contact-actions/ContactCreation"
+import { Locator, Page } from '@playwright/test';
+import { ContactCreation } from "@actions/contact-actions/ContactCreation";
 
 export class ContactPage extends BasePage {
   readonly contactsLink: Locator;
@@ -35,7 +33,7 @@ export class ContactPage extends BasePage {
   }
 
 
-  async createContact(data?: Parameters<typeof ContactActions.contactCreation>[0]) {
-    await ContactActions.contactCreation(data);
+  async createContact(data?: Parameters<typeof ContactCreation.contactCreation>[0]) {
+    await ContactCreation.contactCreation(data);
   }
 }

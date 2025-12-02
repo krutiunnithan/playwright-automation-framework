@@ -9,9 +9,6 @@
  * - Provides reusable assertions for test cases.
  * ============================================================================
  */
-import { expect, Locator } from '@playwright/test';
-import { PageProvider } from '@utils/ui-utils/PageProvider';
-import { ContactPage } from "@pages/ContactPage";
 import { GenericValidations } from '@validations/GenericValidations';
 
 export class ContactValidations {
@@ -25,10 +22,10 @@ export class ContactValidations {
    * @throws {Error} If the toast message does not match expected message
    * ==========================================================================
    */
-//   static async validateContactCreation(firstName: string, lastName: string) {
-//     const regex = new RegExp(`Contact .* was created`, "i");
-//     await GenericValidations.validateToastMessage(regex);
-//   }
+  //   static async validateContactCreation(firstName: string, lastName: string) {
+  //     const regex = new RegExp(`Contact .* was created`, "i");
+  //     await GenericValidations.validateToastMessage(regex);
+  //   }
   static async validateContactCreation() {
     const regex = new RegExp(`Contact .* was created`, "i");
     await GenericValidations.validateToastMessage(regex);

@@ -1,7 +1,7 @@
+import { TestTags } from "@data/enums/test-tags.enums";
+import { UserProfiles } from "@data/enums/user-profiles.enums";
 import { test } from '@fixtures/pom-fixtures';
 import { LoginValidations } from "@validations/LoginValidations";
-import { UserProfiles } from "@data/enums/user-profiles.enums";
-import { TestTags } from "@data/enums/test-tags.enums";
 
 // ------------------------------------------------------
 // Test 1: Verify successful login as Case Manager

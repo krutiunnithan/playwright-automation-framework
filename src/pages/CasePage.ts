@@ -1,6 +1,6 @@
-import { Locator, Page, expect } from '@playwright/test';
+import { CaseCreation } from "@actions/case-actions/CaseCreation";
 import { BasePage } from '@pages/BasePage';
-import { CaseActions } from "@actions/case-actions/CaseCreation"
+import { Locator, Page } from '@playwright/test';
 
 export class CasePage extends BasePage {
   readonly casesLink: Locator;
@@ -22,7 +22,7 @@ export class CasePage extends BasePage {
   }
 
 
-  async createCase(data?: Parameters<typeof CaseActions.caseCreation>[0]) {
-    await CaseActions.caseCreation(data);
+  async createCase(data?: Parameters<typeof CaseCreation.caseCreation>[0]) {
+    await CaseCreation.caseCreation(data);
   }
 }
