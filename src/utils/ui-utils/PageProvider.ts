@@ -1,57 +1,45 @@
-/**
- * ============================================================================
- * PageProvider Utility
- * ----------------------------------------------------------------------------
- * Provides a centralized static access point for the Playwright `Page` object
- * across the test framework. 
- * 
- * This is useful when POMs or helpers need access to the page without passing it
- * explicitly through every function or class constructor.
- * 
- * Implements safety checks to prevent access before initialization.
- * ============================================================================
- */
-import { Page } from "@playwright/test";
-
-/** Holds the current Playwright Page instance (or null if uninitialized) */
-let currentPage: Page | null = null;
+import { Page } from '@playwright/test';
 
 /**
  * ============================================================================
- * PageProvider
- * ----------------------------------------------------------------------------
- * Static helper class to manage a shared Playwright Page instance.
+ * Page Provider - Global Singleton
  * ============================================================================
+ * Provides async-safe access to the current page for a test.
  */
-export class PageProvider {
+class PageProvider {
+  private static currentPage: Page | null = null;
 
   /**
-   * Sets the current Page instance for static access.
-   *
-   * @param {Page} page - The Playwright Page object to register
+   * Set the page for the current test
    */
-  static setPage(page: Page) {
-    currentPage = page;
+  static setPage(page: Page): void {
+    this.currentPage = page;
   }
 
   /**
-   * Retrieves the current registered Page instance.
-   *
-   * @throws {Error} If accessed before initialization
-   * @returns {Page} Playwright Page object
+   * Get the current page
+   * Returns page if set, throws error if not
    */
-  static get page(): Page {
-    if (!currentPage) {
-      throw new Error("PageProvider.page accessed before being initialized.");
+  static async getPage(timeoutMs: number = 10000): Promise<Page> {
+    const startTime = Date.now();
+    
+    // Wait for page to be set (up to timeoutMs)
+    while (!this.currentPage) {
+      if (Date.now() - startTime > timeoutMs) {
+        throw new Error(`PageProvider: Page not set within ${timeoutMs}ms`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-    return currentPage;
+    
+    return this.currentPage;
   }
 
   /**
-   * Clears the current Page instance from memory.
-   * Useful for test teardown to prevent leaking state between tests.
+   * Clear the page reference
    */
-  static clear() {
-    currentPage = null;
+  static clear(): void {
+    this.currentPage = null;
   }
 }
+
+export { PageProvider };

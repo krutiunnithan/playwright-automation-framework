@@ -1,146 +1,101 @@
-/**
- * ============================================================================
- * Playwright POM Fixture Configuration
- * ----------------------------------------------------------------------------
- * Central fixture provider for:
- *  - Initializing Page Object Model (POM) classes
- *  - Providing globally accessible `page` instance
- *  - Managing automatic navigation for UI test suites
- *
- * This file acts as the dependency injection (DI) layer for all UI tests.
- * ============================================================================
- */
 import { CasePage } from '@pages/CasePage';
 import { ContactPage } from '@pages/ContactPage';
 import { LoginPage } from '@pages/LoginPage';
-import { test as base, expect } from '@playwright/test';
-import { PageProvider } from '@utils/ui-utils/PageProvider';
+import { expect } from '@playwright/test';
 import path from 'path';
 
 
-/**
- * ----------------------------------------------------------------------------
- * Fixture Types
- * ----------------------------------------------------------------------------
- * Defines which POMs (Page Objects) will be injected into the test context.
- */
+import { PageProvider } from '@utils/ui-utils/PageProvider';
+import { test as baseWorkerTest } from './worker-context';
+
+
 type PomFixtures = {
+  page: any;
   loginPage: LoginPage;
   contactPage: ContactPage;
   casePage: CasePage;
 };
 
-
-/**
- * ----------------------------------------------------------------------------
- * Extended Playwright Test Object
- * ----------------------------------------------------------------------------
- * Adds POM fixtures to the default Playwright test object.
- */
-export const test = base.extend<PomFixtures>({
-
-  /**
-   * ==========================================================================
-   * Page Fixture
-   * ==========================================================================
-   * Responsibilities:
-   *  - Provide a single shared Playwright `page` object
-   *  - Register the page into PageProvider for global static access
-   *  - Ensure cleanup after each test
-   *
-   * @param page - Playwright's native Page object
-   * @param use  - Callback that exposes the fixture to the test
-   */
-  page: async ({ page }, use) => {
-
-    // Register the active Playwright page globally
-    PageProvider.setPage(page);
-
-    // Inject page to tests
-    await use(page);
-
-    // Cleanup to avoid leaking state across tests
+export const test = baseWorkerTest.extend<PomFixtures>({
+  page: async ({ workerPage }, use) => {
+    PageProvider.setPage(workerPage);
+    await use(workerPage);
     PageProvider.clear();
   },
 
+  loginPage: async ({ workerPage }, use, testInfo) => {
+    const workerIndex = testInfo.workerIndex;
+    console.log(
+      `[POM-Fixture] Creating LoginPage for worker ${workerIndex} (test: ${testInfo.title})`
+    );
 
-  /**
-   * ==========================================================================
-   * Login Page Fixture
-   * ==========================================================================
-   * Provides a ready-to-use LoginPage instance for each test.
-   *
-   * @param page - Playwright page instance
-   * @param use  - Exposes the fixture to test bodies
-   */
-  loginPage: async ({ page }, use) => {
-    const loginPage = new LoginPage(page);
+    const loginPage = new LoginPage(workerPage, workerIndex);
+
+    const relativePath = path.relative(
+      path.resolve(__dirname, '../tests'),
+      testInfo.file
+    );
+    const segments = relativePath.split(path.sep);
+    const moduleFolder = segments[1];
+
+    if (moduleFolder === 'contact-module-tests') {
+      loginPage.setModuleType('contact');
+    } else if (moduleFolder === 'case-module-tests') {
+      loginPage.setModuleType('case');
+    } else {
+      loginPage.setModuleType('login');
+    }
+
     await use(loginPage);
   },
 
-
-  /**
-   * ==========================================================================
-   * Contact Page Fixture
-   * ==========================================================================
-   * Provides a ready-to-use ContactPage instance.
-   *
-   * @param page - Playwright page instance
-   * @param use  - Exposes the fixture to test bodies
-   */
-  contactPage: async ({ page }, use) => {
-    const contactPage = new ContactPage(page);
+  contactPage: async ({ workerPage }, use) => {
+    const contactPage = new ContactPage(workerPage);
     await use(contactPage);
   },
 
-
-  /**
-   * ==========================================================================
-   * Case Page Fixture
-   * ==========================================================================
-   * Provides a ready-to-use CasePage instance.
-   *
-   * @param page - Playwright page instance
-   * @param use  - Exposes the fixture to test bodies
-   */
-  casePage: async ({ page }, use) => {
-    const casePage = new CasePage(page);
+  casePage: async ({ workerPage }, use) => {
+    const casePage = new CasePage(workerPage);
     await use(casePage);
   },
 });
 
+test.beforeEach(async ({ workerPage }, testInfo) => {
+  PageProvider.setPage(workerPage);
 
-/**
- * ----------------------------------------------------------------------------
- * Global BeforeEach Hook
- * ----------------------------------------------------------------------------
- * Purpose:
- *  - Automatically navigate to base URL before UI tests
- *  - Avoids repetitive `page.goto('/')` inside each test file
- *
- * Logic:
- *  - Detects the top-level test folder (ui-tests / ui-api-tests)
- *  - Only auto-navigates for UI-driven suites
- *
- * @param page - Playwright Page instance
- * @param testInfo - Metadata about the currently running test
- */
-test.beforeEach(async ({ page }, testInfo) => {
+  // Clear old session files from previous workers (not current worker)
+  // This prevents device identification issues
+  const fs = await import('fs');
+  const path = await import('path');
+  const authDir = path.join(process.cwd(), '.auth');
 
-  // Determine relative test folder (e.g., ui-tests/, api-tests/, etc.)
-  const relativePath = path.relative(path.resolve(__dirname, '../tests'), testInfo.file);
-
-  // Split into path segments
-  const segments = relativePath.split(path.sep);
-
-  // The first segment is the top-level folder under tests
-  const topFolder = segments[0];
-
-  // Auto-navigate for UI-focused test suites
-  if (topFolder === 'ui-tests' || topFolder === 'ui-api-tests') {
-    await page.goto('/');
+  try {
+    if (fs.existsSync(authDir)) {
+      const files = fs.readdirSync(authDir);
+      files.forEach(file => {
+        // Only delete sessions from OTHER workers, keep current worker's session
+        if (!file.includes(`worker${testInfo.workerIndex}`)) {
+          fs.unlinkSync(path.join(authDir, file));
+          console.log(`[beforeEach] Cleared stale session: ${file}`);
+        }
+      });
+    }
+  } catch (_) {
+    // ignore
   }
+
+
+  const salesforceOrgUrl = process.env.SALESFORCE_ORG_URL || 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com';
+  console.log(`[beforeEach] Navigating to ${salesforceOrgUrl}`);
+  await workerPage.goto(salesforceOrgUrl, { waitUntil: 'domcontentloaded' });
 });
 
+test.afterEach(async ({ workerPage }, testInfo) => {
+  if (testInfo.status !== 'passed') {
+    const screenshotPath = `test-results/failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;
+    console.log(`[afterEach] Test failed, capturing screenshot: ${screenshotPath}`);
+    await workerPage.screenshot({ path: screenshotPath }).catch(() => { });
+  }
+});
 
 export { expect };

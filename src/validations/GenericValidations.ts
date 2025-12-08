@@ -24,7 +24,7 @@ export class GenericValidations {
    * ==========================================================================
    */
   static async validateToastMessage(expectedMessage: RegExp | string) {
-    const page = PageProvider.page;
+    const page = await PageProvider.getPage();
 
     // Playwright locator for the toast
     const toast = page.locator("//div[@class='forceVisualMessageQueue']/following-sibling::div[@role='status']");

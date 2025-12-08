@@ -1,29 +1,17 @@
 /**
  * ============================================================================
  * AWS Secrets Utility
- * ----------------------------------------------------------------------------
- * Provides helper functions for:
- * - Assuming an AWS role with STS
- * - Fetching environment-specific user credentials
- * - Retrieving Gmail/other secrets from AWS Secrets Manager
- *
- * Implements caching of STS temporary credentials for efficiency.
  * ============================================================================
+ * Fetches environment-specific user credentials and secrets from AWS Secrets Manager.
+ * Supports per-worker user distribution for parallel test execution.
+ * Works on local (SSO) and CI (IAM Role/OIDC).
  */
 import AWS from 'aws-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-/** Duration for STS temporary credentials (12 hours) */
 const STS_DURATION = 12 * 60 * 60;
 
-/**
- * ============================================================================
- * CachedCredentials
- * ----------------------------------------------------------------------------
- * Interface for storing temporary STS credentials in memory
- * ============================================================================
- */
 interface CachedCredentials {
   accessKeyId: string;
   secretAccessKey: string;
@@ -31,29 +19,16 @@ interface CachedCredentials {
   expiration: Date;
 }
 
-// In-memory cache for temporary credentials
 let cachedCreds: CachedCredentials | null = null;
-
-// STS client for assuming roles
 const sts = new AWS.STS({ region: process.env.AWS_REGION });
 
-
 /**
- * ============================================================================
- * assumeRole
- * ----------------------------------------------------------------------------
- * Assumes an AWS role using STS and caches the temporary credentials in memory.
- *
- * @param {string} roleArn - ARN of the AWS role to assume
- * @returns {Promise<AWS.SecretsManager>} AWS SecretsManager client initialized with temporary credentials
- * ============================================================================
+ * Assumes an AWS role using STS and caches temporary credentials
  */
 async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
   const now = new Date();
 
   if (!cachedCreds || now >= cachedCreds.expiration) {
-
-    // Refresh credentials if expired or not present
     const res = await sts
       .assumeRole({
         RoleArn: roleArn,
@@ -72,7 +47,6 @@ async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
     };
   }
 
-  // Return a SecretsManager client with cached credentials
   return new AWS.SecretsManager({
     region: process.env.AWS_REGION,
     accessKeyId: cachedCreds.accessKeyId,
@@ -84,30 +58,57 @@ async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
 /**
  * ============================================================================
  * getUserCreds
- * ----------------------------------------------------------------------------
- * Fetches user credentials for a given environment and profile from AWS Secrets Manager.
- *
- * @param {string} env - Target environment (e.g., 'dev', 'qa', 'prod')
- * @param {string} userProfile - Profile name (e.g., 'case manager')
- * @returns {Promise<{username: string, password: string}>} Environment-specific user credentials
  * ============================================================================
+ * Fetches user credentials and distributes per worker for parallel execution.
+ *
+ * If profileData is an array (multi-user), selects: user[workerIndex % array.length]
+ * This ensures each worker gets a unique user if available.
+ *
+ * @param env - Environment (dev, sit, uat)
+ * @param userProfile - Profile name (Case Manager, System Admin, etc.)
+ * @param workerIndex - Worker index (0, 1, 2...) for distribution
+ * @returns User credentials { username, password }
  */
-export async function getUserCreds(env: string, userProfile: string) {
+export async function getUserCreds(
+  env: string,
+  userProfile: string,
+  workerIndex: number = 0
+) {
   const roleArn = process.env.AWS_SECRETS_ROLE_ARN!;
   const secretsManager = await assumeRole(roleArn);
 
-  const secretName = "playwright/test-user-credentials";
+  const secretName = 'playwright/test-user-credentials';
   const secretVal = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
 
-  if (!secretVal.SecretString) throw new Error('SecretString is empty in AWS Secrets Manager');
+  if (!secretVal.SecretString) {
+    throw new Error('SecretString is empty in AWS Secrets Manager');
+  }
 
   const allProfiles = JSON.parse(secretVal.SecretString);
-  if (!allProfiles[env]) throw new Error(`Environment "${env}" not found in secret`);
+
+  if (!allProfiles[env]) {
+    throw new Error(`Environment "${env}" not found in secret`);
+  }
 
   const key = userProfile.replace(/\s+/g, '').toLowerCase();
-  if (!allProfiles[env][key]) throw new Error(`Profile "${userProfile}" not found in environment "${env}"`);
+  const profileData = allProfiles[env][key];
 
-  return allProfiles[env][key];
+  if (!profileData) {
+    throw new Error(`Profile "${userProfile}" not found in environment "${env}"`);
+  }
+
+  // DISTRIBUTE USERS PER WORKER
+  if (Array.isArray(profileData)) {
+    const userIndex = workerIndex % profileData.length;
+    const selected = profileData[userIndex];
+    console.log(
+      `[getUserCreds] Worker ${workerIndex} → "${userProfile}" → user #${userIndex} (${selected.username})`
+    );
+    return selected;
+  }
+
+  console.log(`[getUserCreds] Worker ${workerIndex} → "${userProfile}" → single user (${profileData.username})`);
+  return profileData;
 }
 
 AWS.config.update({ region: process.env.AWS_REGION });
@@ -115,12 +116,8 @@ AWS.config.update({ region: process.env.AWS_REGION });
 /**
  * ============================================================================
  * getGmailSecrets
- * ----------------------------------------------------------------------------
- * Retrieves Gmail (or other) secrets from AWS Secrets Manager.
- *
- * @param {string} secretName - Name of the secret in AWS Secrets Manager
- * @returns {Promise<any>} Parsed JSON object of the secret
  * ============================================================================
+ * Retrieves Gmail OAuth credentials from AWS Secrets Manager
  */
 export async function getGmailSecrets(secretName: string) {
   const client = new AWS.SecretsManager();
@@ -134,50 +131,3 @@ export async function getGmailSecrets(secretName: string) {
     throw err;
   }
 }
-
-
-// Code for SSO login on local and IAM Role via OIDC on pipeline - No STS calls
-
-// import { SecretsManager } from 'aws-sdk';
-
-// /**
-//  * Fetch credentials for a given environment and profile.
-//  * AWS credentials are automatically taken from:
-//  * - AWS SSO (local)
-//  * - OIDC / IAM Role (pipeline)
-//  * - EC2 / Lambda role (runtime)
-//  */
-// export async function getUserCreds(env: string, userProfile: string) {
-//   const sm = new SecretsManager({
-//     region: process.env.AWS_REGION,
-//   });
-
-//   // your secret name stays the same
-//   const secretName = "playwright/test-user-credentials";
-//   const secretVal = await sm.getSecretValue({ SecretId: secretName }).promise();
-
-//   if (!secretVal.SecretString) {
-//     throw new Error("SecretString is empty in AWS Secrets Manager");
-//   }
-
-//   const allProfiles = JSON.parse(secretVal.SecretString);
-
-//   if (!allProfiles[env]) {
-//     throw new Error(`Environment "${env}" not found in secrets`);
-//   }
-
-//   // normalize keys
-//   const key = userProfile.replace(/\s+/g, '').toLowerCase();
-
-//   // map your secret format:
-//   // CaseManager, SystemAdmin, AccommodationsManager
-//   const foundProfile = Object.keys(allProfiles[env]).find(
-//     k => k.toLowerCase() === key
-//   );
-
-//   if (!foundProfile) {
-//     throw new Error(`Profile "${userProfile}" not found in environment "${env}"`);
-//   }
-
-//   return allProfiles[env][foundProfile]; // { username, password }
-// }

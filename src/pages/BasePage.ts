@@ -119,6 +119,10 @@ export abstract class BasePage {
     return el.isVisible();
   }
 
+  async wait() {
+    await this.page.waitForTimeout(10000);
+  }
+
 
   /**
    * Select a value from a Salesforce Lightning picklist
@@ -136,6 +140,7 @@ export abstract class BasePage {
     await dropdownOption.waitFor({ state: 'attached', timeout: this.defaultTimeout });
 
     // Click the desired option
+    await dropdownOption.scrollIntoViewIfNeeded();
     await dropdownOption.click({ force: true });
 
     // Wait for dropdown to disappear (stability)

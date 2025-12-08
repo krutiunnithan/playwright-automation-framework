@@ -58,7 +58,7 @@ export class ContactPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.contactsLink = this.page.getByRole('link', { name: 'Contacts' });
-    this.newContactButton = this.page.locator('//button[@name="NewContact"]');
+    this.newContactButton = this.page.locator('//div[@title="New"]');
     this.firstNameTextBox = this.page.getByRole('textbox', { name: 'First Name' });
     this.lastNameTextBox = this.page.getByRole('textbox', { name: 'Last Name' });
     this.phoneTextBox = this.page.getByRole('textbox', { name: 'Phone', exact: true });
