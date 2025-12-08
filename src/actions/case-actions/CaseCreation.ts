@@ -67,10 +67,9 @@ export class CaseCreation {
       }
     }
 
-    const page = PageProvider.page;
+    const page = await PageProvider.getPage();
     const casePage = new CasePage(page);
 
-    await casePage.click(casePage.casesLink);
     await casePage.click(casePage.newCaseButton);
 
     await casePage.selectPicklistValue("Status", data.status!);

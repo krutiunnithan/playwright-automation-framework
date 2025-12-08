@@ -1,14 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config(); // load .env
+dotenv.config({ path: path.resolve(__dirname, '.env') }); // load .env
 
 // Map environment to URL
 const env = process.env.TEST_ENVIRONMENT_VALUE || 'dev';
 const BASE_URLS: Record<string, string> = {
-  dev: 'https://orgfarm-eefdb34c0a-dev-ed.develop.my.salesforce.com',
-  sit: 'https://orgfarm-eefdb34c0a-sit-ed.develop.my.salesforce.com',
-  uat: 'https://orgfarm-eefdb34c0a-uat-ed.develop.my.salesforce.com',
+  dev: 'https://orgfarm-4a2ccda1cd-dev-ed.develop.my.salesforce.com',
+  sit: 'https://sit-orgfarm-4a2ccda1cd-dev-ed.develop.my.salesforce.com',
+  uat: 'https://uat-orgfarm-4a2ccda1cd-dev-ed.develop.my.salesforce.com',
 };
 
 const baseURL = BASE_URLS[env.toLowerCase()]
@@ -34,8 +35,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
+  timeout: 60 * 1000 * 3, // 2 minutes per test
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 3,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   //reporter: [['html', {open:'always'}]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -51,7 +53,7 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
-  projects: [
+   projects: [
     {
       name: 'chromium',
       testMatch: [

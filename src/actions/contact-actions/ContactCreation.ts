@@ -70,10 +70,9 @@ export class ContactCreation {
       }
     }
 
-    const page = PageProvider.page;
+    const page = await PageProvider.getPage();
     const contactPage = new ContactPage(page);
 
-    await contactPage.click(contactPage.contactsLink);
     await contactPage.click(contactPage.newContactButton);
 
     await contactPage.selectPicklistValue("Salutation", data.salutation!);
@@ -87,5 +86,15 @@ export class ContactCreation {
     await contactPage.fill(contactPage.mailingZipTextBox, data.zip!);
 
     await contactPage.click(contactPage.saveButton);
+
+    // Handle "You have similar contacts" dialog if it appears
+    try {
+      const dismissButton = page.getByRole('button', { name: 'Dismiss' });
+      await dismissButton.waitFor({ state: 'visible', timeout: 5_000 });
+      await dismissButton.click();
+      console.log('[ContactPage] Dismissed "similar contacts" dialog');
+    } catch (_) {
+      // Dialog didn't appear, continue
+    }
   }
 }
