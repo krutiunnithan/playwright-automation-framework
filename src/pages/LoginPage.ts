@@ -1,7 +1,11 @@
+import { getAllUserProfiles } from '@data/enums/user-profiles.enums';
 import { fetchSalesforceOTPFromGmail } from '@helpers/gmail-otp-api';
 import { BasePage } from '@pages/BasePage';
 import { Locator, Page } from '@playwright/test';
 import { getGmailSecrets, getUserCreds } from '@utils/aws-utils/AwsSecrets';
+import { acquireUserLock } from '@utils/aws-utils/UserLock';
+import { parallelLogger } from '@utils/log-utils/ParallelExecutionLogger';
+import { LoginUtil } from '@utils/login-utils/LoginUtil';
 import * as SessionUtils from '@utils/session-utils';
 
 export class LoginPage extends BasePage {
@@ -14,10 +18,8 @@ export class LoginPage extends BasePage {
   readonly logoutLink: Locator;
   readonly loginErrorText: Locator;
 
-  private readonly postLoginCheckTimeout = 30_000;
-  private readonly otpFetchTimeout = 180_000;
+  private readonly otpFetchTimeout: number = parseInt(process.env.OTP_FETCH_TIMEOUT_MS || '180000', 10);
   private workerIndex: number;
-  private moduleType: 'contact' | 'case' | 'login' = 'login';
   private cachedCreds: any = null;
 
   constructor(page: Page, workerIndex?: number) {
@@ -33,103 +35,10 @@ export class LoginPage extends BasePage {
     this.loginErrorText = this.page.getByText('Error: Please check your');
   }
 
-  setModuleType(module: 'contact' | 'case' | 'login'): void {
-    this.moduleType = module;
-    console.log(`[LoginPage] Module type set to: ${module}`);
-  }
-
-  private getModuleUrl(): string {
-    switch (this.moduleType) {
-      case 'contact':
-        return '/lightning/o/Contact/list?filterName=__Recent';
-      case 'case':
-        return '/lightning/o/Case/list?filterName=__Recent';
-      default:
-        return '/lightning/page/home';
-    }
-  }
-
-  private async applyStaggerDelay(): Promise<void> {
-    const normalizedWorkerIndex = this.workerIndex % 3;
-    const delayPerWorkerMs = 45_000;
-    const totalDelayMs = normalizedWorkerIndex * delayPerWorkerMs;
-
-    if (totalDelayMs > 0) {
-      const delaySeconds = Math.round(totalDelayMs / 1000);
-      console.log(
-        `[LoginPage] Applying stagger delay: ${delaySeconds}s for worker ${this.workerIndex} (normalized: ${normalizedWorkerIndex})`
-      );
-      await new Promise((resolve) => setTimeout(resolve, totalDelayMs));
-    }
-  }
-
-  private async isSessionValid(): Promise<boolean> {
-    try {
-      await this.profileButton.waitFor({ state: 'visible', timeout: 5_000 });
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  private async tryReuseStorage(profile: string): Promise<boolean> {
-    const exists = SessionUtils.storageStateExists(profile, this.workerIndex);
-    if (!exists) return false;
-
-    try {
-      const applied = await SessionUtils.applyStorageState(
-        this.page,
-        profile,
-        this.workerIndex
-      );
-      if (!applied) {
-        // applyStorageState() returns false for:
-        // 1. Profile mismatch (session belongs to different profile) - DO NOT delete
-        // 2. File load failure - DO NOT delete (file might be used by another worker)
-        // Just return false and proceed with fresh login
-        console.log(`[LoginPage] Session file exists but cannot be reused, proceeding with fresh login`);
-        return false;
-      }
-
-      await this.page.goto('/', { waitUntil: 'domcontentloaded' });
-
-      const moduleUrl = this.getModuleUrl();
-      console.log(`[LoginPage] Reusing session, navigating to: ${moduleUrl}`);
-      await this.page.goto(moduleUrl, { waitUntil: 'domcontentloaded' });
-
-      let currentUrl = this.page.url();
-      if (currentUrl.includes('developer-edition') || currentUrl.includes('/setup')) {
-        console.log(`[LoginPage] Session redirected to setup page, session may be stale`);
-        SessionUtils.deleteStorageState(profile, this.workerIndex);
-        return false;
-      }
-
-      const isValid = await this.isSessionValid();
-      if (!isValid) {
-        console.log(
-          `⚠️  [LoginPage] Session exists but is stale (user logged out), clearing...`
-        );
-        SessionUtils.deleteStorageState(profile, this.workerIndex);
-        return false;
-      }
-
-      try {
-        await this.page.locator('.slds-scope').waitFor({ state: 'visible', timeout: 5_000 });
-      } catch (_) {
-        console.log(`[LoginPage] Lightning UI load delayed, continuing...`);
-      }
-
-      console.log(
-        `✓ [LoginPage] Reused VALID session for worker ${this.workerIndex}`
-      );
-      return true;
-    } catch (err) {
-      console.log(`[LoginPage] Error during session reuse: ${err}`);
-      // On exception, don't delete - just return false and proceed with fresh login
-      return false;
-    }
-  }
-
+  /**
+   * Logs in user with credentials, OTP, and session management
+   * @param profile User profile (e.g., 'casemanager', 'systemadmin')
+   */
   async login(profile: string) {
     const env = process.env.TEST_ENVIRONMENT_VALUE || 'dev';
 
@@ -139,28 +48,41 @@ export class LoginPage extends BasePage {
       `[LoginPage] Logging in ${profile} (worker ${this.workerIndex}) as ${this.cachedCreds.username}`
     );
 
-    // 2) CHECK IF SESSION REUSE IS ALLOWED
+    // 2) ACQUIRE USER LOCK (prevents concurrent use of same user by different workers)
+    // Lock will be released in afterEach hook, not here
+    await acquireUserLock(
+      this.cachedCreds.username,
+      this.workerIndex,
+      profile,
+      `test`
+    );
+
+    // 3) CHECK IF SESSION REUSE IS ALLOWED
     const shouldReuseSession = this.cachedCreds.allowSessionReuse !== false;
 
     if (shouldReuseSession) {
-      const reused = await this.tryReuseStorage(profile);
-      if (reused) return;
+      const reused = await LoginUtil.tryReuseStorage(
+        this.page,
+        this.profileButton,
+        profile,
+        this.workerIndex
+      );
+      if (reused) {
+        parallelLogger.logSessionReuse(this.workerIndex, this.cachedCreds.username, profile);
+        return;
+      }
     } else {
       console.log(`[LoginPage] User "${this.cachedCreds.username}" has allowSessionReuse=false, clearing any existing session`);
-      // CRITICAL: Clear the page context to remove any old cookies/storage
-      // This is done BEFORE any navigation to ensure a truly fresh state
+      parallelLogger.logFreshLogin(this.workerIndex, this.cachedCreds.username, profile);
       await this.page.context().clearCookies();
-      
-      // Also delete the session file to prevent accidental reuse
       SessionUtils.deleteStorageState(profile, this.workerIndex);
-      
       console.log(`[LoginPage] Page context cleared for fresh login attempt`);
     }
 
-    // 3) APPLY STAGGER DELAY
-    await this.applyStaggerDelay();
+    // 4) APPLY STAGGER DELAY
+    await LoginUtil.applyStaggerDelay(this.workerIndex);
 
-    // 4) EXPLICIT WAIT for login form - with retry
+    // 5) EXPLICIT WAIT for login form - with retry
     console.log('[LoginPage] Waiting for login form to load...');
     let formReady = false;
     let retries = 0;
@@ -190,7 +112,7 @@ export class LoginPage extends BasePage {
       }
     }
 
-    // 5) Submit login credentials
+    // 6) Submit login credentials
     await this.fill(this.usernameInput, this.cachedCreds.username);
     await this.fill(this.passwordInput, this.cachedCreds.password);
 
@@ -202,7 +124,7 @@ export class LoginPage extends BasePage {
     await this.click(this.loginButton);
     await this.page.waitForTimeout(1500);
 
-    // 6) Check for login error BEFORE OTP
+    // 7) Check for login error BEFORE OTP
     let errorMessageVisible = false;
     try {
       errorMessageVisible = await this.loginErrorText.isVisible({ timeout: 5_000 });
@@ -215,7 +137,7 @@ export class LoginPage extends BasePage {
       return;
     }
 
-    // 7) Handle OTP if visible
+    // 8) Handle OTP if visible
     let otpVisible = false;
     try {
       otpVisible = await this.otpTextBox.isVisible({ timeout: 10_000 });
@@ -225,6 +147,7 @@ export class LoginPage extends BasePage {
 
     if (otpVisible) {
       console.log('[LoginPage] OTP prompt detected, fetching from Gmail...');
+      const otpStartTime = Date.now();
       const secrets = await getGmailSecrets('playwright/gmail-otp-creds');
       const testRunId = `run_${Date.now()}_${Math.floor(Math.random() * 10000)}_worker${this.workerIndex}`;
 
@@ -239,7 +162,10 @@ export class LoginPage extends BasePage {
           loginSubmitTime,
           this.cachedCreds.username
         );
+
         console.log(`[LoginPage] OTP received: ${otp}`);
+        const otpWaitTime = Date.now() - otpStartTime;
+        parallelLogger.logOtpClaim(this.workerIndex, this.cachedCreds.username, otp, otpWaitTime);
         await this.fill(this.otpTextBox, otp);
         await this.click(this.verifyButton);
       } catch (err) {
@@ -247,12 +173,7 @@ export class LoginPage extends BasePage {
       }
     }
 
-    // 8) Navigate to Lightning module
-    const moduleUrl = this.getModuleUrl();
-    console.log(`[LoginPage] Navigating to module: ${moduleUrl}`);
-    await this.page.goto(moduleUrl);
-
-    // 10) Save session - but NOT for allowSessionReuse=false users
+    // 9) Save session - but NOT for allowSessionReuse=false users
     if (this.cachedCreds.allowSessionReuse !== false) {
       await SessionUtils.saveStorageState(
         this.page,
@@ -264,15 +185,36 @@ export class LoginPage extends BasePage {
     } else {
       console.log(`[LoginPage] Skipping session save for user "${this.cachedCreds.username}" (allowSessionReuse=false)`);
     }
+
+    // 10) Wait for dashboard to load (profile button visible indicates successful login)
+    try {
+      await this.profileButton.waitFor({ state: 'visible', timeout: 15_000 });
+      console.log(`✓ [LoginPage] Dashboard loaded, profile button visible`);
+    } catch (err) {
+      console.warn(`[LoginPage] Dashboard load delayed, but continuing...`);
+    }
   }
 
+  /**
+   * Logs out the current user and clears all sessions
+   */
   async logout() {
+    // Wait for page to be ready (profile button visible) before attempting logout
+    try {
+      await this.profileButton.waitFor({ state: 'visible', timeout: 10_000 });
+      console.log('[LoginPage] Profile button visible, proceeding with logout');
+    } catch (err) {
+      console.log('[LoginPage] Profile button not visible, attempting navigation to home...');
+      await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+      await this.profileButton.waitFor({ state: 'visible', timeout: 10_000 });
+    }
+
     await this.click(this.profileButton);
     await this.click(this.logoutLink);
 
     await this.page.waitForURL(/login/, { timeout: 10_000 }).catch(() => { });
 
-    const allProfiles = ['casemanager', 'systemadmin', 'accommodationsmanager'];
+    const allProfiles = getAllUserProfiles();
     for (const prof of allProfiles) {
       try {
         SessionUtils.deleteStorageState(prof, this.workerIndex);
@@ -288,6 +230,10 @@ export class LoginPage extends BasePage {
     );
   }
 
+  /**
+   * Gets login error message if login failed
+   * @returns Error message text
+   */
   async getLoginError(): Promise<string> {
     return this.loginErrorText.innerText();
   }

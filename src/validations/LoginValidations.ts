@@ -5,7 +5,7 @@ import { PageProvider } from '@utils/ui-utils/PageProvider';
 export class LoginValidations {
   static async validateDashboard(page?: Page): Promise<void> {
     console.log(' Validating that dashboard is displayed...');
-    
+
     const pageToUse = page || await PageProvider.getPage();
     expect(pageToUse).toHaveTitle(/Salesforce|Lightning Experience/i, { timeout: 30000 });
     console.log('VALIDATED that dashboard is displayed...');
@@ -24,10 +24,10 @@ export class LoginValidations {
    */
   static async validateLoginFailure(page?: Page) {
     console.log(' Validating login failure message...');
-    
+
     // Give page a moment to stabilize before validation
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     const pageToUse = page || await PageProvider.getPage();
 
     // Initialize the LoginPage POM to access error text
@@ -37,7 +37,7 @@ export class LoginValidations {
     let errorText = '';
     let attempts = 0;
     const maxAttempts = 3;
-    
+
     while (attempts < maxAttempts) {
       try {
         errorText = await loginPage.getLoginError();

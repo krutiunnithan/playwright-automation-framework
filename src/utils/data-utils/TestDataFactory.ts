@@ -1,7 +1,6 @@
+import { DataSource } from "@data/enums/data-sources.enums";
+import { SalesforceModule } from "@data/enums/modules.enums";
 import { RulesEngine } from "@utils/data-utils/RulesEngine";
-
-
-export type DataSource = 'synthetic' | 'soql' | 'combined';
 
 /**
  * ============================================================================
@@ -11,23 +10,22 @@ export type DataSource = 'synthetic' | 'soql' | 'combined';
  * ============================================================================
  */
 export class TestDataFactory {
-  
-  static async getData(module: 'contact' | 'case', data_source: DataSource)
-   {
-    switch (data_source) {
-      case 'synthetic':
+
+  static async getData(module: SalesforceModule, dataSource: DataSource) {
+    switch (dataSource) {
+      case DataSource.SYNTHETIC:
         return await RulesEngine.generate(module);
-        
-      case 'soql':
+
+      case DataSource.SOQL:
         // TODO: integrate Salesforce query
         throw new Error('SOQL data source not implemented yet');
 
-      case 'combined':
+      case DataSource.COMBINED:
         // TODO: merge synthetic + SOQL
         throw new Error('Combined data source not implemented yet');
 
       default:
-        throw new Error(`Unknown data source: ${data_source}`);
+        throw new Error(`Unknown data source: ${dataSource}`);
     }
   }
 }

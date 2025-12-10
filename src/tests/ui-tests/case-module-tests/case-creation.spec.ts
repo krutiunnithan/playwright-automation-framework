@@ -6,7 +6,13 @@ import { CaseValidations } from "@validations/CaseValidations";
 // --------------------------------------------------------
 // Test 1: Verify successful case creation as Case Manager
 // --------------------------------------------------------
-test('Verify case creation as a case manager', { tag: TestTags.SMOKE }, async ({ page, loginPage, casePage }) => {
+test('Verify case creation as a case manager', {
+  tag: [TestTags.SMOKE],
+  annotation: [
+    { type: 'Feature', description: 'Case Management' },
+    { type: 'Priority', description: 'High' }
+  ]
+}, async ({ page, loginPage, casePage }) => {
 
   // Step 1: Login using Case Manager credentials
   await loginPage.login(UserProfiles.CASE_MANAGER);

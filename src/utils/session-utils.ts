@@ -11,9 +11,9 @@
  * ====================================================================
  */
 
+import { Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { Page } from '@playwright/test';
 
 const AUTH_DIR = path.resolve(process.cwd(), '.auth');
 
@@ -91,7 +91,7 @@ export async function applyStorageState(page: Page, profileName: string, workerI
     if (state.metadata && state.metadata.profileName) {
         const normalizedExpected = profileName.replace(/\s+/g, '').toLowerCase();
         const normalizedStored = state.metadata.profileName.replace(/\s+/g, '').toLowerCase();
-        
+
         if (normalizedStored !== normalizedExpected) {
             console.warn(
                 `[SessionUtils] SECURITY: Profile mismatch detected!` +
@@ -161,10 +161,10 @@ export async function saveStorageState(
     username?: string
 ): Promise<string> {
     const p = storageStatePathFor(profileName, workerIndex);
-    
+
     // Get Playwright's standard storageState
     const state = await page.context().storageState();
-    
+
     // Enrich with metadata for validation
     const enrichedState = {
         ...state,
@@ -175,7 +175,7 @@ export async function saveStorageState(
             workerIndex: typeof workerIndex === 'number' ? workerIndex : getWorkerIndex()
         }
     };
-    
+
     fs.writeFileSync(p, JSON.stringify(enrichedState, null, 2));
     return p;
 }

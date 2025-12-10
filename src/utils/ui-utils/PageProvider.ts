@@ -22,7 +22,7 @@ class PageProvider {
    */
   static async getPage(timeoutMs: number = 10000): Promise<Page> {
     const startTime = Date.now();
-    
+
     // Wait for page to be set (up to timeoutMs)
     while (!this.currentPage) {
       if (Date.now() - startTime > timeoutMs) {
@@ -30,7 +30,7 @@ class PageProvider {
       }
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     return this.currentPage;
   }
 
@@ -43,3 +43,4 @@ class PageProvider {
 }
 
 export { PageProvider };
+
