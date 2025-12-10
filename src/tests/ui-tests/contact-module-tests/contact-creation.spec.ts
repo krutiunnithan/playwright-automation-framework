@@ -6,7 +6,13 @@ import { ContactValidations } from "@validations/ContactValidations";
 // -----------------------------------------------------------
 // Test 1: Verify successful contact creation as Case Manager
 // -----------------------------------------------------------
-test('Verify contact creation as a case manager', { tag: TestTags.SMOKE }, async ({ page, loginPage, contactPage }) => {
+test('Verify contact creation as a case manager', {
+  tag: [TestTags.SMOKE],
+  annotation: [
+    { type: 'Feature', description: 'Contact Management' },
+    { type: 'Priority', description: 'High' }
+  ]
+}, async ({ page, loginPage, contactPage }) => {
 
   // Step 1: Login using Case Manager credentials
   await loginPage.login(UserProfiles.CASE_MANAGER);

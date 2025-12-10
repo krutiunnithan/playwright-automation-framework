@@ -9,6 +9,7 @@
  * to generate realistic, yet randomized test data.
  * ============================================================================
 */
+import { SalesforceModule } from '@data/enums/modules.enums';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -24,7 +25,7 @@ export class RulesEngine {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  static async generate(module: 'contact' | 'case'): Promise<any> {
+  static async generate(module: SalesforceModule): Promise<any> {
 
     // Construct absolute path to the JSON rules file
     const rulesFile = path.resolve(__dirname, '../../data/json', `${module}-synthetic.json`);

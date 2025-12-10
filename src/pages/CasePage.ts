@@ -10,7 +10,7 @@
  * Extends BasePage to inherit standard Playwright utility methods.
  * ============================================================================
  */
-import { CaseCreation } from "@actions/case-actions/CaseCreation";
+import { CaseCreation, CaseData } from "@actions/case-actions/CaseCreation";
 import { BasePage } from '@pages/BasePage';
 import { Locator, Page } from '@playwright/test';
 
@@ -70,7 +70,7 @@ export class CasePage extends BasePage {
   *
   * ==========================================================================
   */
-  async createCase(data?: Parameters<typeof CaseCreation.caseCreation>[0]) {
+  async createCase(data?: CaseData) {
     await CaseCreation.caseCreation(data);
   }
 }

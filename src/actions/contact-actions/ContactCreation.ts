@@ -1,5 +1,9 @@
+import { AppRoutes } from '@data/constants/app-routes';
+import { ContactFormFields } from '@data/constants/form-fields';
+import { DataSource } from '@data/enums/data-sources.enums';
+import { SalesforceModule } from '@data/enums/modules.enums';
 import { ContactPage } from '@pages/ContactPage';
-import { DataSource, TestDataFactory } from '@utils/data-utils/TestDataFactory';
+import { TestDataFactory } from '@utils/data-utils/TestDataFactory';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
 
 
@@ -36,7 +40,6 @@ export interface ContactData {
  */
 export class ContactCreation {
 
-
   /**
   * ==========================================================================
   * contactCreation
@@ -44,10 +47,9 @@ export class ContactCreation {
   * Creates a Contact record via Salesforce UI.
   *
   * @param data        Optional ContactData object to override test values
-  * @param dataSource  Optional DataSource ('synthetic', 'soql', etc.)
   *
   * Behavior:
-  *   - Defaults dataSource to 'synthetic' unless overridden
+  *   - Defaults dataSource to 'synthetic' 
   *   - If `data` is not provided, retrieves Contact data from TestDataFactory
   *   - Executes all UI interactions using ContactPage POM methods
   *
@@ -55,46 +57,38 @@ export class ContactCreation {
   *   - Error if TestDataFactory fails to return contact data
   * ==========================================================================
   */
-  static async contactCreation(
-    data?: ContactData,
-    dataSource?: DataSource  // <-- allow test to override
-  ) {
-    // If no explicit dataSource, default to 'synthetic'
-    const source: DataSource = dataSource ?? 'synthetic';
-
-    // Fetch synthetic or SOQL data if no args provided
-    if (!data) {
-      data = await TestDataFactory.getData('contact', source);
-      if (!data) {
-        throw new Error('Failed to fetch contact data from TestDataFactory');
-      }
-    }
-
-    const page = await PageProvider.getPage();
-    const contactPage = new ContactPage(page);
-
-    await contactPage.click(contactPage.newContactButton);
-
-    await contactPage.selectPicklistValue("Salutation", data.salutation!);
-    await contactPage.fill(contactPage.firstNameTextBox, data.firstName!);
-    await contactPage.fill(contactPage.lastNameTextBox, data.lastName!);
-    await contactPage.fill(contactPage.phoneTextBox, data.phone!);
-    await contactPage.fill(contactPage.emailTextBox, data.email!);
-    await contactPage.selectPicklistValue("Mailing Country", data.country!);
-    await contactPage.fill(contactPage.mailingCityTextBox, data.city!);
-    await contactPage.selectPicklistValue("Mailing State/Province", data.state!);
-    await contactPage.fill(contactPage.mailingZipTextBox, data.zip!);
-
-    await contactPage.click(contactPage.saveButton);
-
-    // Handle "You have similar contacts" dialog if it appears
+  static async contactCreation(data?: ContactData) {
     try {
-      const dismissButton = page.getByRole('button', { name: 'Dismiss' });
-      await dismissButton.waitFor({ state: 'visible', timeout: 5_000 });
-      await dismissButton.click();
-      console.log('[ContactPage] Dismissed "similar contacts" dialog');
-    } catch (_) {
-      // Dialog didn't appear, continue
+      // Use synthetic by default
+      if (!data) {
+        data = await TestDataFactory.getData(SalesforceModule.CONTACT, DataSource.SYNTHETIC);
+        if (!data) {
+          throw new Error('Failed to fetch contact data from TestDataFactory');
+        }
+      }
+
+      const page = await PageProvider.getPage();
+      const contactPage = new ContactPage(page);
+
+      // Navigate to contact list
+      console.log('[ContactCreation] Navigating to contact list...');
+      await page.goto(AppRoutes.CONTACT_LIST, { waitUntil: 'domcontentloaded' });
+
+      await contactPage.click(contactPage.newContactButton);
+
+      await contactPage.selectPicklistValue(ContactFormFields.SALUTATION, data.salutation!);
+      await contactPage.fill(contactPage.firstNameTextBox, data.firstName!);
+      await contactPage.fill(contactPage.lastNameTextBox, data.lastName!);
+      await contactPage.fill(contactPage.phoneTextBox, data.phone!);
+      await contactPage.fill(contactPage.emailTextBox, data.email!);
+      await contactPage.selectPicklistValue(ContactFormFields.MAILING_COUNTRY, data.country!);
+      await contactPage.fill(contactPage.mailingCityTextBox, data.city!);
+      await contactPage.selectPicklistValue(ContactFormFields.MAILING_STATE, data.state!);
+      await contactPage.fill(contactPage.mailingZipTextBox, data.zip!);
+      await contactPage.click(contactPage.saveButton);
+    }
+    catch (err) {
+      throw err instanceof Error ? err : new Error(String(err));
     }
   }
 }

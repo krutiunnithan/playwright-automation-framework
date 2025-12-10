@@ -169,17 +169,4 @@ export abstract class BasePage {
     }
     throw lastErr;
   }
-
-
-  /**
-   * ==========================================================================
-   * screenshot
-   * Capture full-page screenshot and save to ./reports
-   * ==========================================================================
-   * @param {string} name - File name for screenshot (default: 'screenshot')
-   * @returns {Promise<Buffer>} Screenshot buffer
-   */
-  async screenshot(name = 'screenshot') {
-    return this.page.screenshot({ path: `./reports/${name}.png`, fullPage: true });
-  }
 }

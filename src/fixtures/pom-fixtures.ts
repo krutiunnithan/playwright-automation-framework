@@ -2,11 +2,12 @@ import { CasePage } from '@pages/CasePage';
 import { ContactPage } from '@pages/ContactPage';
 import { LoginPage } from '@pages/LoginPage';
 import { expect } from '@playwright/test';
-import path from 'path';
+import { releaseUserLockByWorker } from '@utils/aws-utils/UserLock';
 
-
+import { AppRoutes } from '@data/constants/app-routes';
+import { test as baseWorkerTest } from '@fixtures/worker-context';
+import { parallelLogger } from '@utils/log-utils/ParallelExecutionLogger';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
-import { test as baseWorkerTest } from './worker-context';
 
 
 type PomFixtures = {
@@ -31,21 +32,6 @@ export const test = baseWorkerTest.extend<PomFixtures>({
 
     const loginPage = new LoginPage(workerPage, workerIndex);
 
-    const relativePath = path.relative(
-      path.resolve(__dirname, '../tests'),
-      testInfo.file
-    );
-    const segments = relativePath.split(path.sep);
-    const moduleFolder = segments[1];
-
-    if (moduleFolder === 'contact-module-tests') {
-      loginPage.setModuleType('contact');
-    } else if (moduleFolder === 'case-module-tests') {
-      loginPage.setModuleType('case');
-    } else {
-      loginPage.setModuleType('login');
-    }
-
     await use(loginPage);
   },
 
@@ -60,42 +46,58 @@ export const test = baseWorkerTest.extend<PomFixtures>({
   },
 });
 
-test.beforeEach(async ({ workerPage }, testInfo) => {
-  PageProvider.setPage(workerPage);
-
-  // Clear old session files from previous workers (not current worker)
-  // This prevents device identification issues
-  const fs = await import('fs');
-  const path = await import('path');
-  const authDir = path.join(process.cwd(), '.auth');
-
+test.beforeEach(async ({ workerPage, baseURL }, testInfo) => {
   try {
+    parallelLogger.logTestStart(testInfo.workerIndex, testInfo.title);
+    PageProvider.setPage(workerPage);
+
+    // Clear old session files
+    const fs = await import('fs');
+    const path = await import('path');
+    const authDir = path.join(process.cwd(), '.auth');
+
+
     if (fs.existsSync(authDir)) {
       const files = fs.readdirSync(authDir);
       files.forEach(file => {
-        // Only delete sessions from OTHER workers, keep current worker's session
         if (!file.includes(`worker${testInfo.workerIndex}`)) {
           fs.unlinkSync(path.join(authDir, file));
           console.log(`[beforeEach] Cleared stale session: ${file}`);
         }
       });
     }
-  } catch (_) {
-    // ignore
+
+
+    // Use baseURL from config instead of hardcoded
+    console.log(`[beforeEach] Navigating to ${baseURL}`);
+    await workerPage.goto(AppRoutes.HOME, { waitUntil: 'domcontentloaded' });
   }
-
-
-  const salesforceOrgUrl = process.env.SALESFORCE_ORG_URL || 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com';
-  console.log(`[beforeEach] Navigating to ${salesforceOrgUrl}`);
-  await workerPage.goto(salesforceOrgUrl, { waitUntil: 'domcontentloaded' });
+  catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
 });
 
 test.afterEach(async ({ workerPage }, testInfo) => {
-  if (testInfo.status !== 'passed') {
-    const screenshotPath = `test-results/failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;
-    console.log(`[afterEach] Test failed, capturing screenshot: ${screenshotPath}`);
-    await workerPage.screenshot({ path: screenshotPath }).catch(() => { });
+  try {
+    // RELEASE USER LOCK (whether test passed or failed)
+    releaseUserLockByWorker(testInfo.workerIndex);
+    parallelLogger.logTestEnd(testInfo.workerIndex, testInfo.title, testInfo.status === 'passed' ? 'PASSED' : 'FAILED');
+
+
+    if (testInfo.status !== 'passed') {
+      const screenshotPath = `test-results/failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;
+      console.log(`[afterEach] Test failed, capturing screenshot: ${screenshotPath}`);
+      await workerPage.screenshot({ path: screenshotPath }).catch(() => { });
+    }
+
+    // Print summary at the end
+    if (testInfo.testId.includes('spec.ts')) {
+      console.log(parallelLogger.generateSummary());
+    }
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
   }
 });
 
 export { expect };
+

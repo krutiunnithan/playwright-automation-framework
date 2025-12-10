@@ -10,7 +10,7 @@
  * Extends BasePage to leverage shared Playwright utilities.
  * ============================================================================
  */
-import { ContactCreation } from "@actions/contact-actions/ContactCreation";
+import { ContactCreation, ContactData } from "@actions/contact-actions/ContactCreation";
 import { BasePage } from '@pages/BasePage';
 import { Locator, Page } from '@playwright/test';
 
@@ -82,7 +82,7 @@ export class ContactPage extends BasePage {
   *   await contactPage.createContact({ firstName: "John", lastName: "Doe" });
   * ==========================================================================
   */
-  async createContact(data?: Parameters<typeof ContactCreation.contactCreation>[0]) {
+  async createContact(data?: ContactData) {
     await ContactCreation.contactCreation(data);
   }
 }
