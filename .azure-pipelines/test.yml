@@ -1,0 +1,51 @@
+trigger:
+  - dev-kruti
+  - main
+
+pr:
+  - dev-kruti
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: Playwright-Secrets
+
+stages:
+  - stage: RunTests
+    displayName: 'Run Playwright Tests'
+    jobs:
+      - job: Tests
+        displayName: 'Execute Tests'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '18.x'
+            displayName: 'Install Node.js'
+
+          - script: npm ci
+            displayName: 'Install Dependencies'
+
+          - script: npx playwright install
+            displayName: 'Install Playwright Browsers'
+
+          - script: npm run test:parallel
+            displayName: 'Run Tests (3 workers)'
+            env:
+              SALESFORCE_ORG_URL: $(SALESFORCE_ORG_URL)
+              TEST_ENVIRONMENT_VALUE: $(TEST_ENVIRONMENT_VALUE)
+              AWS_REGION: $(AWS_REGION)
+              AWS_SECRETS_ROLE_ARN: $(AWS_SECRETS_ROLE_ARN)
+              AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+              HEADLESS: 'true'
+
+          - task: PublishTestResults@2
+            displayName: 'Publish Test Results'
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'test-results/junit.xml'
+              mergeTestResults: true
+              failTaskOnFailedTests: false
