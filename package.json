@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-     "test:parallel": "playwright test --workers=3"
+     "test:parallel": "playwright test --workers=1"
   },
   "keywords": [],
   "author": "",
