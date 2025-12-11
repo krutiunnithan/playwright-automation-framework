@@ -14,7 +14,7 @@ const OTP_TIMEOUT_MS = parseInt(process.env.OTP_FETCH_TIMEOUT_MS || '120000', 10
 const BASE_URLS: Record<string, { ui: string; api: string }> = {
   dev: {
     ui: 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com',  
-    api: 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com/services/data/v60.0',  
+    api: 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com',  
   },
   sit: {
     ui: 'https://sit-orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com', 
@@ -64,7 +64,7 @@ export default defineConfig({
 
     {
       name: 'chromium-api-tests',
-      testMatch: 'api-tests/**/*.spec.ts',
+      testMatch: 'api-tests/*.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: urls.api, 

@@ -1,133 +1,132 @@
 /**
  * ============================================================================
- * AWS Secrets Utility
+ * AWS Secrets Manager
  * ============================================================================
- * Fetches environment-specific user credentials and secrets from AWS Secrets Manager.
- * Supports per-worker user distribution for parallel test execution.
- * Works on local (SSO) and CI (IAM Role/OIDC).
+ * Centralized credential fetching from AWS Secrets Manager.
  */
-import AWS from 'aws-sdk';
-import dotenv from 'dotenv';
-dotenv.config();
 
-const STS_DURATION = 12 * 60 * 60;
+const AWS = require('aws-sdk');
 
-interface CachedCredentials {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken: string;
-  expiration: Date;
-}
+let cachedSecretsManager: any = null;
 
-let cachedCreds: CachedCredentials | null = null;
-const sts = new AWS.STS({ region: process.env.AWS_REGION });
+async function assumeRole(roleArn: string): Promise<any> {
+  if (cachedSecretsManager) return cachedSecretsManager;
 
-/**
- * Assumes an AWS role using STS and caches temporary credentials
- */
-async function assumeRole(roleArn: string): Promise<AWS.SecretsManager> {
-  const now = new Date();
+  const sts = new AWS.STS();
+  const assumedRole = await sts
+    .assumeRole({
+      RoleArn: roleArn,
+      RoleSessionName: 'playwright-test-session',
+    })
+    .promise();
 
-  if (!cachedCreds || now >= cachedCreds.expiration) {
-    const res = await sts
-      .assumeRole({
-        RoleArn: roleArn,
-        RoleSessionName: 'PlaywrightSession',
-        DurationSeconds: STS_DURATION,
-      })
-      .promise();
+  const credentials = assumedRole.Credentials;
+  if (!credentials) throw new Error('No credentials in assumed role response');
 
-    if (!res.Credentials) throw new Error('Failed to assume role');
-
-    cachedCreds = {
-      accessKeyId: res.Credentials.AccessKeyId!,
-      secretAccessKey: res.Credentials.SecretAccessKey!,
-      sessionToken: res.Credentials.SessionToken!,
-      expiration: res.Credentials.Expiration!,
-    };
-  }
-
-  return new AWS.SecretsManager({
-    region: process.env.AWS_REGION,
-    accessKeyId: cachedCreds.accessKeyId,
-    secretAccessKey: cachedCreds.secretAccessKey,
-    sessionToken: cachedCreds.sessionToken,
+  const region = process.env.AWS_REGION || 'ap-southeast-2';
+  
+  cachedSecretsManager = new AWS.SecretsManager({
+    region: region,
+    accessKeyId: credentials.AccessKeyId,
+    secretAccessKey: credentials.SecretAccessKey,
+    sessionToken: credentials.SessionToken,
   });
+
+  return cachedSecretsManager;
 }
 
-/**
- * ============================================================================
- * getUserCreds
- * ============================================================================
- * Fetches user credentials and distributes per worker for parallel execution.
- *
- * If profileData is an array (multi-user), selects: user[workerIndex % array.length]
- * This ensures each worker gets a unique user if available.
- *
- * @param env - Environment (dev, sit, uat)
- * @param userProfile - Profile name (Case Manager, System Admin, etc.)
- * @param workerIndex - Worker index (0, 1, 2...) for distribution
- * @returns User credentials { username, password }
- */
-export async function getUserCreds(
-  env: string,
-  userProfile: string,
-  workerIndex: number = 0
-) {
+async function getSalesforceOAuthCreds(): Promise<{
+  clientId: string;
+  clientSecret: string;
+  orgUrl: string;
+}> {
   const roleArn = process.env.AWS_SECRETS_ROLE_ARN!;
   const secretsManager = await assumeRole(roleArn);
 
-  const secretName = 'playwright/test-user-credentials';
-  const secretVal = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+  try {
+    const secretValue = await secretsManager
+      .getSecretValue({ SecretId: 'playwright/salesforce-oauth' })
+      .promise();
 
-  if (!secretVal.SecretString) {
-    throw new Error('SecretString is empty in AWS Secrets Manager');
-  }
-
-  const allProfiles = JSON.parse(secretVal.SecretString);
-
-  if (!allProfiles[env]) {
-    throw new Error(`Environment "${env}" not found in secret`);
-  }
-
-  const key = userProfile.replace(/\s+/g, '').toLowerCase();
-  const profileData = allProfiles[env][key];
-
-  if (!profileData) {
-    throw new Error(`Profile "${userProfile}" not found in environment "${env}"`);
-  }
-
-  // DISTRIBUTE USERS PER WORKER
-  if (Array.isArray(profileData)) {
-    const userIndex = workerIndex % profileData.length;
-    const selected = profileData[userIndex];
-    console.log(
-      `[getUserCreds] Worker ${workerIndex} → "${userProfile}" → user #${userIndex} (${selected.username})`
+    const secret = JSON.parse(secretValue.SecretString || '{}');
+    console.log('Fetched Salesforce OAuth credentials from AWS Secrets Manager');
+    return {
+      clientId: secret.salesforceClientId,
+      clientSecret: secret.salesforceClientSecret,
+      orgUrl: secret.salesforceOrgUrl || 'https://login.salesforce.com',
+    };
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch Salesforce OAuth creds: ${err instanceof Error ? err.message : String(err)}`
     );
-    return selected;
   }
-
-  console.log(`[getUserCreds] Worker ${workerIndex} → "${userProfile}" → single user (${profileData.username})`);
-  return profileData;
 }
 
-AWS.config.update({ region: process.env.AWS_REGION });
-
-/**
- * ============================================================================
- * getGmailSecrets
- * ============================================================================
- * Retrieves Gmail OAuth credentials from AWS Secrets Manager
- */
-export async function getGmailSecrets(secretName: string) {
-  const client = new AWS.SecretsManager();
+async function getUserCreds(
+  env: string,
+  profile: string,
+  workerIndex: number
+): Promise<{ username: string; password: string }> {
+  const roleArn = process.env.AWS_SECRETS_ROLE_ARN!;
+  const secretsManager = await assumeRole(roleArn);
 
   try {
-    const data = await client.getSecretValue({ SecretId: secretName }).promise();
-    if (!data.SecretString) throw new Error('SecretString is empty');
-    return JSON.parse(data.SecretString);
+    const secretValue = await secretsManager
+      .getSecretValue({ SecretId: 'playwright/test-user-credentials' })
+      .promise();
+
+    const secret = JSON.parse(secretValue.SecretString || '{}');
+    const envUsers = secret[env]?.[profile] || [];
+
+    if (envUsers.length === 0) {
+      throw new Error(`No users found for ${env}/${profile}`);
+    }
+
+    const userIndex = workerIndex % envUsers.length;
+    const user = envUsers[userIndex];
+
+    console.log(`[getUserCreds] Worker ${workerIndex} → "${profile}" → user #${userIndex} (${user.username})`);
+
+    return {
+      username: user.username,
+      password: user.password,
+    };
   } catch (err) {
-    console.error(`Failed to fetch secret ${secretName}:`, err);
-    throw err;
+    throw new Error(
+      `Failed to fetch user credentials: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 }
+
+async function getGmailSecrets(secretId: string): Promise<{
+  gmailClientId: string;
+  gmailClientSecret: string;
+  gmailRefreshToken: string;
+}> {
+  const roleArn = process.env.AWS_SECRETS_ROLE_ARN!;
+  const secretsManager = await assumeRole(roleArn);
+
+  try {
+    const secretValue = await secretsManager
+      .getSecretValue({ SecretId: secretId })
+      .promise();
+
+    const secret = JSON.parse(secretValue.SecretString || '{}');
+    console.log('Fetched Gmail OTP credentials from AWS Secrets Manager');
+    return {
+      gmailClientId: secret.gmailClientId,
+      gmailClientSecret: secret.gmailClientSecret,
+      gmailRefreshToken: secret.gmailRefreshToken,
+    };
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch Gmail secrets: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+module.exports = {
+  getSalesforceOAuthCreds,
+  getUserCreds,
+  getGmailSecrets,
+};
