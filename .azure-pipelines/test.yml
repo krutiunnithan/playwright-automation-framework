@@ -40,12 +40,27 @@ stages:
               AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
               HEADLESS: 'true'
+              CI: 'true'
+            continueOnError: true
+
+          - script: pkill -f "http.*9323" || true
+            displayName: 'Kill Report Server (Cleanup)'
+            condition: always()
+            continueOnError: true
 
           - task: PublishTestResults@2
             displayName: 'Publish Test Results'
-            condition: succeededOrFailed()
+            condition: always()
             inputs:
               testResultsFormat: 'JUnit'
               testResultsFiles: 'test-results/junit.xml'
               mergeTestResults: true
-              failTaskOnFailedTests: false
+              failTaskOnFailedTests: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Test Artifacts'
+            condition: always()
+            inputs:
+              PathtoPublish: 'test-results'
+              ArtifactName: 'test-results'
+              publishLocation: 'Container'

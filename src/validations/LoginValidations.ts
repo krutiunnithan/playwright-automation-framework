@@ -3,12 +3,20 @@ import { expect, Page } from '@playwright/test';
 import { PageProvider } from '@utils/ui-utils/PageProvider';
 
 export class LoginValidations {
-  static async validateDashboard(page?: Page): Promise<void> {
-    console.log(' Validating that dashboard is displayed...');
+  /**
+   * ==========================================================================
+   * validateDashboard
+   * ----------------------------------------------------------------------------
+   * Validates that the dashboard has loaded by checking the page title.
+   * 
+   * @param page - Optional Page instance. If not provided, uses PageProvider
+   * @throws {Error} If the page title does not match expected pattern
+   * ==========================================================================
+   */
 
+  static async validateDashboard(page?: Page): Promise<void> {
     const pageToUse = page || await PageProvider.getPage();
     expect(pageToUse).toHaveTitle(/Salesforce|Lightning Experience/i, { timeout: 30000 });
-    console.log('VALIDATED that dashboard is displayed...');
   }
 
   /**
@@ -23,7 +31,6 @@ export class LoginValidations {
    * ==========================================================================
    */
   static async validateLoginFailure(page?: Page) {
-    console.log(' Validating login failure message...');
 
     // Give page a moment to stabilize before validation
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -55,6 +62,5 @@ export class LoginValidations {
 
     // Assert that the error text matches expected message
     expect(errorText).toContain("Error: Please check your username and password. If you still can't log in, contact your Salesforce administrator.");
-    console.log(' ✓ Login failure message validated');
   }
 }

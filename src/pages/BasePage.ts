@@ -4,7 +4,7 @@
  * ----------------------------------------------------------------------------
  * Abstract base class for all Page Objects.
  * Provides reusable wrapper methods around Playwright Page and Locator
- * to simplify actions, add default timeouts, retry logic, and screenshots.
+ * to simplify actions.
  * ============================================================================
  */
 import { Locator, Page } from '@playwright/test';
@@ -145,28 +145,5 @@ export abstract class BasePage {
 
     // Wait for dropdown to disappear (stability)
     await this.page.waitForTimeout(500);
-  }
-
-
-  /**
-   * ==========================================================================
-   * attempt
-   * Retry-safe action wrapper
-   * ==========================================================================
-   * @param {() => Promise<void>} action - Async action to attempt
-   * @param {number} retries             - Number of retries (default 2)
-   */
-  async attempt(action: () => Promise<void>, retries = 2) {
-    let lastErr: any;
-    for (let i = 0; i <= retries; i++) {
-      try {
-        await action();
-        return;
-      } catch (err) {
-        lastErr = err;
-        if (i < retries) await this.page.waitForTimeout(500);
-      }
-    }
-    throw lastErr;
   }
 }

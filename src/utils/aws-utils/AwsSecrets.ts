@@ -5,10 +5,11 @@
  * Centralized credential fetching from AWS Secrets Manager.
  */
 
-const AWS = require('aws-sdk');
+import AWS from 'aws-sdk';
 
 let cachedSecretsManager: any = null;
 
+// Assumes IAM role and returns cached Secrets Manager instance
 async function assumeRole(roleArn: string): Promise<any> {
   if (cachedSecretsManager) return cachedSecretsManager;
 
@@ -24,7 +25,7 @@ async function assumeRole(roleArn: string): Promise<any> {
   if (!credentials) throw new Error('No credentials in assumed role response');
 
   const region = process.env.AWS_REGION || 'ap-southeast-2';
-  
+
   cachedSecretsManager = new AWS.SecretsManager({
     region: region,
     accessKeyId: credentials.AccessKeyId,
@@ -35,6 +36,7 @@ async function assumeRole(roleArn: string): Promise<any> {
   return cachedSecretsManager;
 }
 
+// Fetches Salesforce OAuth credentials from AWS Secrets Manager
 async function getSalesforceOAuthCreds(): Promise<{
   clientId: string;
   clientSecret: string;
@@ -49,7 +51,6 @@ async function getSalesforceOAuthCreds(): Promise<{
       .promise();
 
     const secret = JSON.parse(secretValue.SecretString || '{}');
-    console.log('Fetched Salesforce OAuth credentials from AWS Secrets Manager');
     return {
       clientId: secret.salesforceClientId,
       clientSecret: secret.salesforceClientSecret,
@@ -62,6 +63,7 @@ async function getSalesforceOAuthCreds(): Promise<{
   }
 }
 
+// Fetches user credentials from AWS Secrets Manager for specified environment and profile
 async function getUserCreds(
   env: string,
   profile: string,
@@ -85,8 +87,6 @@ async function getUserCreds(
     const userIndex = workerIndex % envUsers.length;
     const user = envUsers[userIndex];
 
-    console.log(`[getUserCreds] Worker ${workerIndex} → "${profile}" → user #${userIndex} (${user.username})`);
-
     return {
       username: user.username,
       password: user.password,
@@ -98,6 +98,7 @@ async function getUserCreds(
   }
 }
 
+// Fetches Gmail OAuth credentials from AWS Secrets Manager
 async function getGmailSecrets(secretId: string): Promise<{
   gmailClientId: string;
   gmailClientSecret: string;
@@ -112,7 +113,6 @@ async function getGmailSecrets(secretId: string): Promise<{
       .promise();
 
     const secret = JSON.parse(secretValue.SecretString || '{}');
-    console.log('Fetched Gmail OTP credentials from AWS Secrets Manager');
     return {
       gmailClientId: secret.gmailClientId,
       gmailClientSecret: secret.gmailClientSecret,
@@ -125,8 +125,4 @@ async function getGmailSecrets(secretId: string): Promise<{
   }
 }
 
-module.exports = {
-  getSalesforceOAuthCreds,
-  getUserCreds,
-  getGmailSecrets,
-};
+export { getGmailSecrets, getSalesforceOAuthCreds, getUserCreds };
