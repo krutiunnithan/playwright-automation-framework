@@ -7,7 +7,6 @@ import * as SessionUtils from '@utils/session-utils';
  * LoginUtil - Login Helper Utilities
  * ============================================================================
  * Reusable utilities for login operations (session management, delays, validation).
- * All methods are static and thread-safe for parallel execution.
  */
 export class LoginUtil {
     /**
@@ -21,9 +20,6 @@ export class LoginUtil {
 
         if (totalDelayMs > 0) {
             const delaySeconds = Math.round(totalDelayMs / 1000);
-            console.log(
-                `[LoginUtil] Applying stagger delay: ${delaySeconds}s for worker ${workerIndex} (normalized: ${normalizedWorkerIndex})`
-            );
             await new Promise((resolve) => setTimeout(resolve, totalDelayMs));
         }
     }
@@ -60,7 +56,6 @@ export class LoginUtil {
                 workerIndex
             );
             if (!applied) {
-                console.log(`[LoginUtil] Session file exists but cannot be reused, proceeding with fresh login`);
                 return false;
             }
 
@@ -68,16 +63,12 @@ export class LoginUtil {
 
             let currentUrl = page.url();
             if (currentUrl.includes('developer-edition') || currentUrl.includes('/setup')) {
-                console.log(`[LoginUtil] Session redirected to setup page, session may be stale`);
                 SessionUtils.deleteStorageState(profile, workerIndex);
                 return false;
             }
 
             const isValid = await LoginUtil.isSessionValid(profileButton);
             if (!isValid) {
-                console.log(
-                    `⚠️  [LoginUtil] Session exists but is stale (user logged out), clearing...`
-                );
                 SessionUtils.deleteStorageState(profile, workerIndex);
                 return false;
             }
@@ -87,13 +78,8 @@ export class LoginUtil {
             } catch (_) {
                 console.log(`[LoginUtil] Lightning UI load delayed, continuing...`);
             }
-
-            console.log(
-                `✓ [LoginUtil] Reused VALID session for worker ${workerIndex}`
-            );
             return true;
         } catch (err) {
-            console.log(`[LoginUtil] Error during session reuse: ${err}`);
             return false;
         }
     }

@@ -4,6 +4,9 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+// ✅ Detect CI environment
+const isCI = !!process.env.CI;
+
 // ✅ Environment mapping
 const env = process.env.TEST_ENVIRONMENT_VALUE || 'dev';
 
@@ -39,10 +42,17 @@ export default defineConfig({
   // ✅ Workers from config or env
   workers: process.env.CI ? 3 : (process.env.WORKERS ? parseInt(process.env.WORKERS) : 3),
   
-  reporter: [
-    ['html', { open: 'always' }],
-    ['list'],
-  ],
+  // ✅ CI-aware reporters (prevents hanging in CI/CD)
+  reporter: isCI
+    ? [
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+        ['json', { outputFile: 'test-results/results.json' }],
+        ['list'],
+      ]
+    : [
+        ['html', { open: 'always' }],
+        ['list'],
+      ],
 
   // ✅ Shared settings
   use: {

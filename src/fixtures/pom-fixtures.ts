@@ -1,3 +1,11 @@
+/**
+ * ============================================================================
+ * Page Object Model Test Fixtures
+ * ============================================================================
+ * Provides Page Object Model (POM) page instances for UI tests.
+ * Manages authentication, browser context, and page lifecycle.
+ */
+
 import { CasePage } from '@pages/CasePage';
 import { ContactPage } from '@pages/ContactPage';
 import { LoginPage } from '@pages/LoginPage';
@@ -26,12 +34,7 @@ export const test = baseWorkerTest.extend<PomFixtures>({
 
   loginPage: async ({ workerPage }, use, testInfo) => {
     const workerIndex = testInfo.workerIndex;
-    console.log(
-      `[POM-Fixture] Creating LoginPage for worker ${workerIndex} (test: ${testInfo.title})`
-    );
-
     const loginPage = new LoginPage(workerPage, workerIndex);
-
     await use(loginPage);
   },
 
@@ -46,7 +49,7 @@ export const test = baseWorkerTest.extend<PomFixtures>({
   },
 });
 
-test.beforeEach(async ({ workerPage, baseURL }, testInfo) => {
+test.beforeEach(async ({ workerPage }, testInfo) => {
   try {
     parallelLogger.logTestStart(testInfo.workerIndex, testInfo.title);
     PageProvider.setPage(workerPage);
@@ -62,14 +65,10 @@ test.beforeEach(async ({ workerPage, baseURL }, testInfo) => {
       files.forEach(file => {
         if (!file.includes(`worker${testInfo.workerIndex}`)) {
           fs.unlinkSync(path.join(authDir, file));
-          console.log(`[beforeEach] Cleared stale session: ${file}`);
         }
       });
     }
 
-
-    // Use baseURL from config instead of hardcoded
-    console.log(`[beforeEach] Navigating to ${baseURL}`);
     await workerPage.goto(AppRoutes.HOME, { waitUntil: 'domcontentloaded' });
   }
   catch (err) {
@@ -79,20 +78,14 @@ test.beforeEach(async ({ workerPage, baseURL }, testInfo) => {
 
 test.afterEach(async ({ workerPage }, testInfo) => {
   try {
-    // RELEASE USER LOCK (whether test passed or failed)
+    // Release user lock (whether test passed or failed)
     releaseUserLockByWorker(testInfo.workerIndex);
     parallelLogger.logTestEnd(testInfo.workerIndex, testInfo.title, testInfo.status === 'passed' ? 'PASSED' : 'FAILED');
 
-
+    // Capture screenshot on failure
     if (testInfo.status !== 'passed') {
       const screenshotPath = `test-results/failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;
-      console.log(`[afterEach] Test failed, capturing screenshot: ${screenshotPath}`);
       await workerPage.screenshot({ path: screenshotPath }).catch(() => { });
-    }
-
-    // Print summary at the end
-    if (testInfo.testId.includes('spec.ts')) {
-      console.log(parallelLogger.generateSummary());
     }
   } catch (err) {
     throw err instanceof Error ? err : new Error(String(err));

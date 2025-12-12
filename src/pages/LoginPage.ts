@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * LoginPage
+ * ----------------------------------------------------------------------------
+ * Page Object Model for Salesforce login page.
+ * Handles user authentication with username/password and OTP verification.
+ * Manages user session initialization and AWS user lock acquisition for
+ * parallel test execution.
+ *
+ * Extends BasePage to inherit standard Playwright utility methods.
+ * ============================================================================
+ */
 import { getAllUserProfiles } from '@data/enums/user-profiles.enums';
 import { fetchSalesforceOTPFromGmail } from '@helpers/gmail-otp-api';
 import { BasePage } from '@pages/BasePage';
@@ -42,14 +54,11 @@ export class LoginPage extends BasePage {
   async login(profile: string) {
     const env = process.env.TEST_ENVIRONMENT_VALUE || 'dev';
 
-    // 1) FETCH CREDENTIALS FIRST
+    // 1) Fetch user credentials from AWS Secrets Manager
     this.cachedCreds = await getUserCreds(env, profile, this.workerIndex);
-    console.log(
-      `[LoginPage] Logging in ${profile} (worker ${this.workerIndex}) as ${this.cachedCreds.username}`
-    );
 
-    // 2) ACQUIRE USER LOCK (prevents concurrent use of same user by different workers)
-    // Lock will be released in afterEach hook, not here
+    // 2) Acquire user lock (prevents concurrent use of same user by different workers)
+    // Lock will be released in afterEach hook
     await acquireUserLock(
       this.cachedCreds.username,
       this.workerIndex,
@@ -57,7 +66,7 @@ export class LoginPage extends BasePage {
       `test`
     );
 
-    // 3) CHECK IF SESSION REUSE IS ALLOWED
+    // 3) Check for session reuse
     const shouldReuseSession = this.cachedCreds.allowSessionReuse !== false;
 
     if (shouldReuseSession) {
@@ -72,18 +81,15 @@ export class LoginPage extends BasePage {
         return;
       }
     } else {
-      console.log(`[LoginPage] User "${this.cachedCreds.username}" has allowSessionReuse=false, clearing any existing session`);
       parallelLogger.logFreshLogin(this.workerIndex, this.cachedCreds.username, profile);
       await this.page.context().clearCookies();
       SessionUtils.deleteStorageState(profile, this.workerIndex);
-      console.log(`[LoginPage] Page context cleared for fresh login attempt`);
     }
 
-    // 4) APPLY STAGGER DELAY
+    // 4) Apply stagger delay before login to reduce contention
     await LoginUtil.applyStaggerDelay(this.workerIndex);
 
-    // 5) EXPLICIT WAIT for login form - with retry
-    console.log('[LoginPage] Waiting for login form to load...');
+    // 5) Explicit wait for login form - with retry
     let formReady = false;
     let retries = 0;
     const maxRetries = 2;
@@ -93,11 +99,9 @@ export class LoginPage extends BasePage {
         await this.usernameInput.waitFor({ state: 'visible', timeout: 30_000 });
         await this.passwordInput.waitFor({ state: 'visible', timeout: 30_000 });
         formReady = true;
-        console.log('[LoginPage] ✓ Login form is ready');
       } catch (err) {
         retries++;
         if (retries <= maxRetries) {
-          console.log(`[LoginPage] Login form not ready (attempt ${retries}/${maxRetries}), clearing cookies and reloading...`);
           try {
             await this.page.context().clearCookies();
             const salesforceUrl = process.env.SALESFORCE_ORG_URL || 'https://orgfarm-4a2ccda1cd-dev-ed.develop.lightning.force.com';
@@ -117,9 +121,6 @@ export class LoginPage extends BasePage {
     await this.fill(this.passwordInput, this.cachedCreds.password);
 
     const loginSubmitTime = Date.now();
-    console.log(
-      `[LoginPage] Submitted credentials at ${new Date(loginSubmitTime).toISOString()}`
-    );
 
     await this.click(this.loginButton);
     await this.page.waitForTimeout(1500);
@@ -133,7 +134,6 @@ export class LoginPage extends BasePage {
     }
 
     if (errorMessageVisible) {
-      console.log('[LoginPage] ❌ Login failed - error message detected. Stopping here.');
       return;
     }
 
@@ -146,7 +146,6 @@ export class LoginPage extends BasePage {
     }
 
     if (otpVisible) {
-      console.log('[LoginPage] OTP prompt detected, fetching from Gmail...');
       const otpStartTime = Date.now();
       const secrets = await getGmailSecrets('playwright/gmail-otp-creds');
       const testRunId = `run_${Date.now()}_${Math.floor(Math.random() * 10000)}_worker${this.workerIndex}`;
@@ -163,7 +162,6 @@ export class LoginPage extends BasePage {
           this.cachedCreds.username
         );
 
-        console.log(`[LoginPage] OTP received: ${otp}`);
         const otpWaitTime = Date.now() - otpStartTime;
         parallelLogger.logOtpClaim(this.workerIndex, this.cachedCreds.username, otp, otpWaitTime);
         await this.fill(this.otpTextBox, otp);
@@ -181,15 +179,13 @@ export class LoginPage extends BasePage {
         this.workerIndex,
         this.cachedCreds.username
       );
-      console.log(`✓ [LoginPage] Saved session for worker ${this.workerIndex}`);
     } else {
-      console.log(`[LoginPage] Skipping session save for user "${this.cachedCreds.username}" (allowSessionReuse=false)`);
+      console.log(`[LoginPage] Skipping session save`);
     }
 
     // 10) Wait for dashboard to load (profile button visible indicates successful login)
     try {
       await this.profileButton.waitFor({ state: 'visible', timeout: 15_000 });
-      console.log(`✓ [LoginPage] Dashboard loaded, profile button visible`);
     } catch (err) {
       console.warn(`[LoginPage] Dashboard load delayed, but continuing...`);
     }
@@ -202,9 +198,7 @@ export class LoginPage extends BasePage {
     // Wait for page to be ready (profile button visible) before attempting logout
     try {
       await this.profileButton.waitFor({ state: 'visible', timeout: 10_000 });
-      console.log('[LoginPage] Profile button visible, proceeding with logout');
     } catch (err) {
-      console.log('[LoginPage] Profile button not visible, attempting navigation to home...');
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
       await this.profileButton.waitFor({ state: 'visible', timeout: 10_000 });
     }
@@ -224,10 +218,6 @@ export class LoginPage extends BasePage {
     }
 
     this.cachedCreds = null;
-
-    console.log(
-      `✓ [LoginPage] Logged out and cleared session for worker ${this.workerIndex}`
-    );
   }
 
   /**

@@ -66,10 +66,10 @@ export class CaseCreation {
       const page = await PageProvider.getPage();
       const casePage = new CasePage(page);
 
-      // Navigate to case list
-      console.log('[CaseCreation] Navigating to case list...');
+      // Navigate to case list view
       await page.goto(AppRoutes.CASE_LIST, { waitUntil: 'domcontentloaded' });
 
+      // Case creation steps
       await casePage.click(casePage.newCaseButton);
 
       await casePage.selectPicklistValue(CaseFormFields.STATUS, data.status!);

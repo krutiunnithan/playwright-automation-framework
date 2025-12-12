@@ -1,10 +1,3 @@
-/**
- * ============================================================================
- * SOQL Query Constants
- * ============================================================================
- * Centralized SOQL queries - reusable across all API tests.
- */
-
 export const SoqlQueries = {
   Contact: {
     GET_SINGLE_CONTACT: `SELECT Id, FirstName, LastName, Email, Phone FROM Contact LIMIT 1`,
@@ -14,7 +7,7 @@ export const SoqlQueries = {
   },
 
   Case: {
-    GET_ALL: `SELECT Id, CaseNumber, Subject, Status, Priority FROM Case LIMIT 1`,
+    GET_SINGLE_CASE: `SELECT Id, CaseNumber, Subject, Status, Priority FROM Case LIMIT 1`,
     GET_RECENT: (limit: number = 10): string =>
       `SELECT Id, CaseNumber, Subject, Status, Priority FROM Case ORDER BY CreatedDate DESC LIMIT ${limit}`,
     GET_COUNT: `SELECT COUNT() FROM Case`,

@@ -25,17 +25,6 @@ export function generateTestRunId(): string {
 
 /**
  * Fetch Salesforce OTP from Gmail with DynamoDB atomic claiming
- * 
- * CRITICAL LOGIC:
- * - All OTPs go to ONE shared inbox (abc@gmail.com)
- * - Each email body contains "Username: user@email.com"
- * - This worker passes its assigned username (userEmail param)
- * - We search through OTPs and find the one whose body matches this worker's username
- * - TIMESTAMP FILTER: Only consider OTPs sent AFTER login attempt (prevents stale OTPs)
- * - DynamoDB atomic claiming prevents another worker from using the same OTP
- * 
- * @param userEmail - The assigned username/email for THIS worker (e.g., kru3581@gmail.com)
- * @param loginSubmitTime - Timestamp when login was submitted (ms since epoch)
  */
 export async function fetchSalesforceOTPFromGmail(
   testRunId: string,
@@ -47,7 +36,7 @@ export async function fetchSalesforceOTPFromGmail(
   loginSubmitTime: number = Date.now(),
   userEmail?: string
 ): Promise<string> {
-  // Validate inputs
+
   if (!clientId || !clientSecret) {
     throw new Error('Google clientId/clientSecret required');
   }
@@ -73,11 +62,6 @@ export async function fetchSalesforceOTPFromGmail(
   const maxMessagesToFetch = 10;
   const maxConsecutiveErrors = 3;
 
-  console.log(`[OTP] testRunId: ${testRunId}`);
-  console.log(`[OTP] Worker username: ${userEmail}`);
-  console.log(`[OTP] Login submit time: ${new Date(loginSubmitTime).toISOString()}`);
-  console.log(`[OTP] Fetching OTP from shared inbox (matching username in email body, timestamp after login)...`);
-
   let consecutiveErrors = 0;
 
   while (Date.now() - pollStartTime < timeoutMs) {
@@ -96,10 +80,7 @@ export async function fetchSalesforceOTPFromGmail(
 
       if (errorMsg.includes('invalid_grant')) {
         console.error('[OTP] CRITICAL: Gmail refresh token is INVALID or EXPIRED');
-        console.error('[OTP] Please regenerate the Gmail refresh token:');
-        console.error('[OTP]   1. Go to Google Cloud Console');
-        console.error('[OTP]   2. Re-authorize the app to get a new refresh token');
-        console.error('[OTP]   3. Update AWS Secrets: playwright/gmail-otp-creds → gmailRefreshToken');
+        console.error('[OTP] Regenerate the Gmail refresh token:');
         throw new Error(`Gmail token invalid: ${errorMsg}`);
       }
 
@@ -114,11 +95,8 @@ export async function fetchSalesforceOTPFromGmail(
 
     if (!messagesRes?.data?.messages?.length) {
       const elapsed = Date.now() - pollStartTime;
-      console.log(`[OTP] No messages found yet (${elapsed}ms elapsed)`);
       continue;
     }
-
-    console.log(`[OTP] Found ${messagesRes.data.messages.length} message(s) in shared inbox`);
 
     // Fetch full message details (sequential - not parallel to maintain order and prevent rate limiting)
     const messagesWithData: { id: string; body: string; timestamp: number }[] = [];
@@ -134,12 +112,10 @@ export async function fetchSalesforceOTPFromGmail(
         });
         const body = extractBody(msgRes?.data?.payload);
 
-        // internalDate is in milliseconds (already)
         const timestamp = parseInt(msgRes?.data?.internalDate || '0', 10);
 
         if (body?.trim()) {
           messagesWithData.push({ id: m.id, body, timestamp });
-          console.log(`[OTP] Message ${m.id} fetched (timestamp: ${new Date(timestamp).toISOString()})`);
         }
       } catch (err: any) {
         console.warn(`[OTP] Failed to fetch message ${m.id}:`, err?.message ?? err);
@@ -149,31 +125,23 @@ export async function fetchSalesforceOTPFromGmail(
 
     if (!messagesWithData.length) {
       const elapsed = Date.now() - pollStartTime;
-      console.log(`[OTP] No valid messages with bodies found (${elapsed}ms elapsed)`);
       continue;
     }
 
-    console.log(`[OTP] Processing ${messagesWithData.length} message(s), matching username and timestamp...`);
-
     // Try to claim each message (newest first - Gmail returns in descending order)
     for (const item of messagesWithData) {
-      // ✅ TIMESTAMP FILTER: Only accept OTPs sent AFTER login attempt
+      // Only accept OTPs sent AFTER login attempt
       if (item.timestamp < loginSubmitTime) {
-        console.log(
-          `[OTP] Message ${item.id} is OLDER than login attempt (${new Date(item.timestamp).toISOString()} < ${new Date(loginSubmitTime).toISOString()}), skipping (stale OTP)`
-        );
         continue;
       }
 
       const otpMatch = item.body.match(OTP_REGEX);
       if (!otpMatch) {
-        console.log(`[OTP] Message ${item.id} has no 6-digit OTP, skipping`);
         continue;
       }
 
       const usernameMatch = item.body.match(USERNAME_REGEX);
       if (!usernameMatch) {
-        console.log(`[OTP] Message ${item.id} has no Username field, skipping`);
         continue;
       }
 
@@ -181,15 +149,10 @@ export async function fetchSalesforceOTPFromGmail(
       const otp = otpMatch[0];
       const messageId = item.id;
 
-      // CRITICAL: Check if this OTP belongs to THIS worker's username
+      // Check if this OTP belongs to THIS worker's username
       if (otpUsername !== userEmail) {
-        console.log(
-          `[OTP] Message ${messageId} is for user "${otpUsername}", not "${userEmail}", skipping`
-        );
         continue;
       }
-
-      console.log(`[OTP] ✓ Found VALID OTP for ${userEmail}: ${otp} (timestamp: ${new Date(item.timestamp).toISOString()})`);
 
       // Try to atomically claim this OTP
       try {
@@ -208,11 +171,9 @@ export async function fetchSalesforceOTPFromGmail(
           })
         );
 
-        console.log(`[OTP] ✓ Successfully claimed OTP ${otp} in DynamoDB`);
         return otp;
       } catch (err: any) {
         if (err?.message?.includes('ConditionalCheckFailed')) {
-          console.log(`[OTP] Message ${messageId} already claimed by another worker, trying next...`);
           continue;
         }
         console.warn(`[OTP] DynamoDB claim failed:`, err?.message ?? err);
@@ -222,10 +183,7 @@ export async function fetchSalesforceOTPFromGmail(
   }
 
   const totalElapsed = Date.now() - pollStartTime;
-  throw new Error(
-    `Failed to fetch Salesforce OTP from Gmail after ${totalElapsed}ms (timeout: ${timeoutMs}ms). ` +
-    `Check: 1) Gmail credentials valid, 2) OTP email sent AFTER login, 3) Username matches in email body, 4) Stagger delays sufficient (STAGGER_DELAY_MS)`
-  );
+  throw new Error(`Failed to fetch Salesforce OTP from Gmail after ${totalElapsed}ms (timeout: ${timeoutMs}ms). `);
 }
 
 function pause(ms: number): Promise<void> {

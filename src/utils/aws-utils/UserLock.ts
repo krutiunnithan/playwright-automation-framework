@@ -33,6 +33,10 @@ const userQueues = new Map<string, UserQueue>();
 const workerCurrentUsers = new Map<number, string>(); // Track which user each worker has locked
 const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes max lock age
 
+
+import { parallelLogger } from '@utils/log-utils/ParallelExecutionLogger';
+
+
 /**
  * ============================================================================
  * acquireUserLock
@@ -41,11 +45,7 @@ const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes max lock age
  * 
  * CALL in: LoginPage.login()
  * RELEASE in: pom-fixtures.test.afterEach()
- * 
- * Returns lock ID - used to track which user is locked by this worker
  */
-import { parallelLogger } from '@utils/log-utils/ParallelExecutionLogger';
-
 export async function acquireUserLock(
   username: string,
   workerIndex: number,
@@ -71,11 +71,6 @@ export async function acquireUserLock(
         workerCurrentUsers.set(workerIndex, username);
 
         parallelLogger.logUserLockAcquire(workerIndex, username, profile, true);
-        console.log(
-          `[UserLock] ✓ Worker ${workerIndex} acquired lock for "${username}" (${profile})${testName ? ` [${testName}]` : ''
-          }`
-        );
-
         resolveAcquire(lockId);
         return;
       }
@@ -83,10 +78,6 @@ export async function acquireUserLock(
       // CASE 2: SAME WORKER already has it → allow reuse without waiting
       if (currentLock.lockedByWorker === workerIndex) {
         parallelLogger.logUserLockAcquire(workerIndex, username, profile, true);
-        console.log(
-          `[UserLock] ✓ Worker ${workerIndex} already owns lock for "${username}" (${profile}) - reusing without wait`
-        );
-
         resolveAcquire(lockId);
         return;
       }
@@ -125,10 +116,6 @@ export async function acquireUserLock(
 
       if (!isAlreadyQueued) {
         parallelLogger.logUserLockWait(workerIndex, username, profile, currentLock.lockedByWorker);
-        console.log(
-          `[UserLock] Worker ${workerIndex} WAITING for "${username}" (currently locked by Worker ${currentLock.lockedByWorker})`
-        );
-
         queue.queue.push({
           workerIndex,
           profile,
@@ -167,16 +154,11 @@ export function releaseUserLockByWorker(workerIndex: number): void {
     userLocks.delete(username);
     workerCurrentUsers.delete(workerIndex);
 
-    console.log(`[UserLock] Released lock for "${username}" by Worker ${workerIndex}`);
-
     // Process next worker in queue
     const queue = userQueues.get(username);
     if (queue && queue.queue.length > 0) {
       const next = queue.queue.shift();
       if (next) {
-        console.log(
-          `[UserLock] Worker ${next.workerIndex} next in queue for "${username}" (${next.profile})`
-        );
         next.resolve();
       }
     }
@@ -193,5 +175,4 @@ export function clearAllLocks(): void {
   userLocks.clear();
   userQueues.clear();
   workerCurrentUsers.clear();
-  console.log(`[UserLock] Cleared all locks`);
 }

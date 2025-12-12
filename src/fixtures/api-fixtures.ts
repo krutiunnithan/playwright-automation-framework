@@ -4,7 +4,6 @@
  * ============================================================================
  * Provides authenticated API client for tests.
  * Uses Client Credentials OAuth2 Flow.
- * Works for both local and CI/CD (parallel-safe).
  */
 
 import { test as base } from '@playwright/test';

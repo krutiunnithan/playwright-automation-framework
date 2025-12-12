@@ -17,7 +17,7 @@ export class CaseValidations {
    * ==========================================================================
    * validateCaseCreation
    * ----------------------------------------------------------------------------
-   * Validates that the casae creation toast message appears.
+   * Validates that the case creation toast message appears.
    * @throws {Error} If the toast message does not match expected message
    * ==========================================================================
    */

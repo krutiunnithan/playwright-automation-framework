@@ -70,10 +70,10 @@ export class ContactCreation {
       const page = await PageProvider.getPage();
       const contactPage = new ContactPage(page);
 
-      // Navigate to contact list
-      console.log('[ContactCreation] Navigating to contact list...');
+      // Navigate to contact list view
       await page.goto(AppRoutes.CONTACT_LIST, { waitUntil: 'domcontentloaded' });
 
+      // Contact creation steps
       await contactPage.click(contactPage.newContactButton);
 
       await contactPage.selectPicklistValue(ContactFormFields.SALUTATION, data.salutation!);
